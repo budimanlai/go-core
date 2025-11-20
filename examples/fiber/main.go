@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	accountHandler "github.com/budimanlai/go-core/account/handler"
-	accountPersistence "github.com/budimanlai/go-core/account/platform/persistence"
+	accountHTTP "github.com/budimanlai/go-core/account/platform/http"
+	accountRepository "github.com/budimanlai/go-core/account/platform/repository"
 	accountSecurity "github.com/budimanlai/go-core/account/platform/security"
 	accountUsecase "github.com/budimanlai/go-core/account/platform/usecase"
 	"github.com/budimanlai/go-core/config"
@@ -40,9 +40,9 @@ func main() {
 		ExpirationHours: cfg.JWTExpirationHours,
 	})
 
-	accountRepo := accountPersistence.NewAccountRepository(db)
+	accountRepo := accountRepository.NewAccountRepository(db)
 	accountUC := accountUsecase.NewAccountUsecase(accountRepo, passwordHasher)
-	accountHTTPHandler := accountHandler.NewAccountHandler(accountUC)
+	accountHTTPHandler := accountHTTP.NewAccountHandler(accountUC)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "Go Core Example",

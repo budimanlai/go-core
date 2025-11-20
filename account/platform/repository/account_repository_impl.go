@@ -1,10 +1,10 @@
-package persistence
+package repository
 
 import (
 	"context"
 
 	"github.com/budimanlai/go-core/account/domain/entity"
-	"github.com/budimanlai/go-core/account/domain/repository"
+	domainRepo "github.com/budimanlai/go-core/account/domain/repository"
 	"github.com/budimanlai/go-core/account/models"
 	"gorm.io/gorm"
 )
@@ -13,7 +13,7 @@ type accountRepositoryImpl struct {
 	db *gorm.DB
 }
 
-func NewAccountRepository(db *gorm.DB) repository.AccountRepository {
+func NewAccountRepository(db *gorm.DB) domainRepo.AccountRepository {
 	return &accountRepositoryImpl{
 		db: db,
 	}
