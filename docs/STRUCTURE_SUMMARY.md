@@ -110,16 +110,6 @@ domain/entity (Business Logic)
 
 ## ✅ Key Improvements from Initial Structure
 
-### Before:
-```
-account/
-├── handler/              ❌ Not in platform
-└── domain/
-    └── usecase/
-        └── account_usecase.go  ❌ Has implementation
-```
-
-### After:
 ```
 account/
 ├── domain/
@@ -140,14 +130,6 @@ Project now uses `github.com/budimanlai/go-pkg` for:
 - **Response:** `go-pkg/response` - Standard API responses
 - **Logger:** `go-pkg/logger` - Logging utilities
 - **i18n:** `go-pkg/i18n` - Internationalization (ready)
-
-### No Custom Utilities
-All custom `pkg/` utilities have been removed in favor of `go-pkg`:
-- ❌ ~~pkg/crypto~~ → ✅ go-pkg/security
-- ❌ ~~pkg/response~~ → ✅ go-pkg/response
-- ❌ ~~pkg/logger~~ → ✅ go-pkg/logger
-- ❌ ~~pkg/validator~~ → ✅ go-pkg/validator
-- ❌ ~~pkg/errors~~ → ✅ go-pkg/response
 
 ## 🎯 Benefits
 
@@ -204,4 +186,4 @@ All custom `pkg/` utilities have been removed in favor of `go-pkg`:
 - ✅ Horizontal scaling
 - ✅ Microservices architecture
 
-**Project ini sudah fully compliant dengan Clean Architecture dan .clinerules! 🎉**
+**This project is now fully compliant with Clean Architecture and .clinerules! 🎉**

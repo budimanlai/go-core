@@ -5,10 +5,10 @@
 **Status:** Accepted
 
 **Context:**
-Kami memerlukan arsitektur yang scalable, testable, dan maintainable untuk microservice modules yang akan digunakan di berbagai project.
+We need a scalable, testable, and maintainable architecture for microservice modules that will be used across various projects.
 
 **Decision:**
-Mengadopsi Clean Architecture dengan layer separation:
+Adopt Clean Architecture with layer separation:
 1. Domain Layer - Core business logic
 2. Application Layer - Use cases
 3. Infrastructure Layer - External dependencies
@@ -16,10 +16,10 @@ Mengadopsi Clean Architecture dengan layer separation:
 
 **Consequences:**
 - ✅ High testability - business logic independent
-- ✅ Framework independence - mudah switch framework
-- ✅ Database independence - mudah ganti DB
-- ⚠️ Lebih banyak boilerplate code
-- ⚠️ Learning curve untuk new developers
+- ✅ Framework independence - easy to switch frameworks
+- ✅ Database independence - easy to change DB
+- ⚠️ More boilerplate code
+- ⚠️ Learning curve for new developers
 
 ---
 
@@ -28,14 +28,14 @@ Mengadopsi Clean Architecture dengan layer separation:
 **Status:** Accepted
 
 **Context:**
-Perlu abstraction untuk data access agar business logic tidak terikat dengan database implementation.
+Need abstraction for data access so business logic is not tied to database implementation.
 
 **Decision:**
-Menggunakan Repository Pattern dengan interface di domain layer dan implementation di infrastructure layer.
+Use Repository Pattern with interfaces in domain layer and implementations in infrastructure layer.
 
 **Consequences:**
-- ✅ Testability - mock repositories untuk testing
-- ✅ Flexibility - ganti DB tanpa ubah business logic
+- ✅ Testability - mock repositories for testing
+- ✅ Flexibility - change DB without changing business logic
 - ✅ Single Responsibility - clear separation
 - ⚠️ Additional abstraction layer
 
@@ -46,10 +46,10 @@ Menggunakan Repository Pattern dengan interface di domain layer dan implementati
 **Status:** Accepted
 
 **Context:**
-Microservice architecture memerlukan stateless authentication mechanism.
+Microservice architecture requires stateless authentication mechanism.
 
 **Decision:**
-Menggunakan JWT (JSON Web Tokens) untuk authentication dengan:
+Use JWT (JSON Web Tokens) for authentication with:
 - HMAC-SHA256 signing
 - 24 hours expiration (configurable)
 - Claims: user_id, email, role
@@ -68,10 +68,10 @@ Menggunakan JWT (JSON Web Tokens) untuk authentication dengan:
 **Status:** Accepted
 
 **Context:**
-Cross-cutting concerns (logging, auth, cors, etc.) perlu di-handle secara consistent.
+Cross-cutting concerns (logging, auth, cors, etc.) need to be handled consistently.
 
 **Decision:**
-Implement middleware pattern yang:
+Implement middleware pattern with:
 - Framework-agnostic interfaces
 - Framework-specific adapters (Fiber, Gin, etc.)
 - Composable and reusable
@@ -89,12 +89,12 @@ Implement middleware pattern yang:
 **Status:** Accepted
 
 **Context:**
-Data recovery dan audit trail requirements.
+Data recovery and audit trail requirements.
 
 **Decision:**
-Implement soft delete sebagai default behavior:
-- DeletedAt field di semua entities
-- Hard delete tersedia tapi explicit
+Implement soft delete as default behavior:
+- DeletedAt field in all entities
+- Hard delete available but explicit
 
 **Consequences:**
 - ✅ Data recovery capability
@@ -110,13 +110,13 @@ Implement soft delete sebagai default behavior:
 **Status:** Accepted
 
 **Context:**
-Perlu consistent error handling across all modules.
+Need consistent error handling across all modules.
 
 **Decision:**
 - Domain errors (ErrAccountNotFound, etc.)
-- AppError wrapper dengan error codes
-- Generic error messages untuk external users
-- Detailed errors untuk logging
+- AppError wrapper with error codes
+- Generic error messages for external users
+- Detailed errors for logging
 
 **Consequences:**
 - ✅ Security - no information leakage
@@ -134,7 +134,7 @@ Perlu consistent error handling across all modules.
 Password security requirements.
 
 **Decision:**
-Menggunakan bcrypt dengan cost factor 10+ untuk password hashing.
+Use bcrypt with cost factor 10+ for password hashing.
 
 **Consequences:**
 - ✅ Industry standard
@@ -150,10 +150,10 @@ Menggunakan bcrypt dengan cost factor 10+ untuk password hashing.
 **Status:** Accepted
 
 **Context:**
-Perlu ORM yang mature dan well-supported untuk Go.
+Need mature and well-supported ORM for Go.
 
 **Decision:**
-Menggunakan GORM sebagai default ORM dengan options untuk:
+Use GORM as default ORM with options for:
 - Raw SQL queries
 - Other ORMs (sqlx, etc.)
 
@@ -171,12 +171,12 @@ Menggunakan GORM sebagai default ORM dengan options untuk:
 **Status:** Accepted
 
 **Context:**
-Configuration management untuk different environments.
+Configuration management for different environments.
 
 **Decision:**
-- Environment variables untuk configuration
-- .env files untuk development
-- Config struct dengan defaults
+- Environment variables for configuration
+- .env files for development
+- Config struct with defaults
 
 **Consequences:**
 - ✅ 12-factor app compliant
@@ -191,7 +191,7 @@ Configuration management untuk different environments.
 **Status:** Accepted
 
 **Context:**
-Perlu backward compatibility saat API changes.
+Need backward compatibility when API changes.
 
 **Decision:**
 URL-based versioning: `/api/v1/`, `/api/v2/`
@@ -201,3 +201,153 @@ URL-based versioning: `/api/v1/`, `/api/v2/`
 - ✅ Easy to route
 - ✅ Multiple versions can coexist
 - ⚠️ URL duplication for same resources
+
+---
+
+## ADR-011: Use go-pkg for Common Utilities
+
+**Status:** Accepted
+
+**Context:**
+Need to avoid duplicating common utility functions and follow DRY principle. External package `github.com/budimanlai/go-pkg` already provides well-tested utilities.
+
+**Decision:**
+Use `go-pkg` for:
+- Security (password hashing with bcrypt)
+- Response formatting (standardized API responses)
+- Logging (structured logging with timestamps)
+- Validation (input validation with i18n)
+- i18n (internationalization support)
+
+**Consequences:**
+- ✅ No code duplication
+- ✅ Well-tested utilities
+- ✅ Consistent patterns across projects
+- ✅ Follows .clinerules guidelines
+- ⚠️ External dependency to maintain
+- ⚠️ Need to keep go-pkg updated
+
+---
+
+## ADR-012: Platform Layer Structure
+
+**Status:** Accepted
+
+**Context:**
+Need clear separation between domain logic and infrastructure implementations. Previous structure had inconsistent placement of handlers and implementations.
+
+**Decision:**
+All infrastructure implementations must be in `platform/` subdirectory:
+- `platform/http/` - HTTP/REST handlers
+- `platform/grpc/` - gRPC service handlers
+- `platform/repository/` - Database implementations
+- `platform/usecase/` - Business logic implementations
+- `platform/security/` - Security adapters
+
+Domain layer contains only:
+- `domain/entity/` - Business entities
+- `domain/repository/` - Repository interfaces
+- `domain/usecase/` - Use case interfaces
+
+**Consequences:**
+- ✅ Clear architectural boundaries
+- ✅ Easy to add new delivery methods (CLI, GraphQL, WebSocket)
+- ✅ Testable domain layer (no infrastructure dependencies)
+- ✅ Framework independence
+- ⚠️ More directory nesting
+- ⚠️ Requires discipline to maintain separation
+
+---
+
+## Architecture Overview
+
+### Layer Dependencies
+
+```
+┌─────────────────────────────────────┐
+│         Delivery Layer              │
+│  (HTTP, gRPC, CLI, GraphQL)         │
+│    platform/http/                   │
+│    platform/grpc/                   │
+└──────────────┬──────────────────────┘
+               │ depends on
+┌──────────────▼──────────────────────┐
+│      Application Layer              │
+│    (Use Case Implementations)       │
+│    platform/usecase/                │
+└──────────────┬──────────────────────┘
+               │ depends on
+┌──────────────▼──────────────────────┐
+│         Domain Layer                │
+│    (Business Logic & Rules)         │
+│    domain/entity/                   │
+│    domain/repository/               │
+│    domain/usecase/                  │
+└──────────────┬──────────────────────┘
+               │ depends on
+┌──────────────▼──────────────────────┐
+│    Infrastructure Layer             │
+│  (External Dependencies)            │
+│    platform/repository/             │
+│    platform/security/               │
+└─────────────────────────────────────┘
+```
+
+### Data Flow
+
+```
+HTTP Request
+    ↓
+[platform/http Handler]
+    ↓
+[platform/usecase Implementation]
+    ↓ (calls interface)
+[domain/usecase Interface]
+    ↓
+[platform/repository Implementation]
+    ↓ (calls interface)
+[domain/repository Interface]
+    ↓
+[domain/entity Business Logic]
+```
+
+### Key Principles
+
+1. **Dependency Rule:** Dependencies point inward. Domain layer has no dependencies on outer layers.
+2. **Interface Segregation:** Domain defines interfaces, platform implements them.
+3. **Single Responsibility:** Each layer has one reason to change.
+4. **Open/Closed:** Open for extension (new delivery methods), closed for modification (domain logic).
+
+### Module Structure Example
+
+```
+account/
+├── domain/              # Business rules (no external deps)
+│   ├── entity/         # Business entities
+│   ├── repository/     # Repository interfaces
+│   └── usecase/        # Use case interfaces
+├── dto/                # Data transfer objects
+├── models/             # Database models (GORM)
+└── platform/           # Infrastructure implementations
+    ├── http/          # HTTP handlers (Fiber)
+    ├── grpc/          # gRPC handlers
+    ├── repository/    # Database implementation
+    ├── security/      # Security adapters
+    └── usecase/       # Business logic implementation
+```
+
+### Adding New Features
+
+1. **New Module:** Follow account/ structure
+2. **New Delivery Method:** Add to platform/ (e.g., platform/cli/)
+3. **New Database:** Implement domain/repository interface
+4. **New Use Case:** Define interface in domain/usecase, implement in platform/usecase
+
+---
+
+## References
+
+- [Clean Architecture by Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
+- [The Twelve-Factor App](https://12factor.net/)
+- [Go Project Layout](https://github.com/golang-standards/project-layout)
