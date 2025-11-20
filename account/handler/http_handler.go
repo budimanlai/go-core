@@ -6,6 +6,7 @@ import (
 
 	"github.com/budimanlai/go-core/account/domain/usecase"
 	"github.com/budimanlai/go-core/account/dto"
+	"github.com/budimanlai/go-pkg/response"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -22,24 +23,18 @@ func NewAccountHandler(usecase usecase.AccountUsecase) *AccountHandler {
 func (h *AccountHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return response.BadRequest(c, "Invalid request body")
 	}
 
 	account, err := h.usecase.Register(c.Context(), req.Email, req.Username, req.Password, req.FullName)
 	if err != nil {
 		if err == usecase.ErrAccountAlreadyExists {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return response.Error(c, fiber.StatusConflict, err.Error())
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to register account",
-		})
+		return response.Error(c, fiber.StatusInternalServerError, "Failed to register account")
 	}
 
-	response := dto.AccountResponse{
+	accountResponse := dto.AccountResponse{
 		ID:        account.ID,
 		Email:     account.Email,
 		Username:  account.Username,
@@ -50,32 +45,25 @@ func (h *AccountHandler) Register(c *fiber.Ctx) error {
 		UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"data": response,
-	})
+	c.Status(fiber.StatusCreated)
+	return response.Success(c, "Account registered successfully", accountResponse)
 }
 
 func (h *AccountHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "invalid request body",
-		})
+		return response.BadRequest(c, "Invalid request body")
 	}
 
 	account, err := h.usecase.Login(c.Context(), req.Identifier, req.Password)
 	if err != nil {
 		if err == usecase.ErrInvalidCredentials || err == usecase.ErrAccountInactive {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return response.Error(c, fiber.StatusUnauthorized, err.Error())
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to login",
-		})
+		return response.Error(c, fiber.StatusInternalServerError, "Failed to login")
 	}
 
-	response := dto.LoginResponse{
+	loginResponse := dto.LoginResponse{
 		Account: dto.AccountResponse{
 			ID:        account.ID,
 			Email:     account.Email,
@@ -91,32 +79,24 @@ func (h *AccountHandler) Login(c *fiber.Ctx) error {
 		ExpiresIn:   3600,
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"data": response,
-	})
+	return response.Success(c, "Login successful", loginResponse)
 }
 
 func (h *AccountHandler) GetByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "id is required",
-		})
+		return response.BadRequest(c, "ID is required")
 	}
 
 	account, err := h.usecase.GetByID(c.Context(), id)
 	if err != nil {
 		if err == usecase.ErrAccountNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return response.NotFound(c, "Account not found")
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to get account",
-		})
+		return response.Error(c, fiber.StatusInternalServerError, "Failed to get account")
 	}
 
-	response := dto.AccountResponse{
+	accountResponse := dto.AccountResponse{
 		ID:        account.ID,
 		Email:     account.Email,
 		Username:  account.Username,
@@ -127,9 +107,7 @@ func (h *AccountHandler) GetByID(c *fiber.Ctx) error {
 		UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"data": response,
-	})
+	return response.Success(c, "Account retrieved successfully", accountResponse)
 }
 
 func (h *AccountHandler) List(c *fiber.Ctx) error {
@@ -145,9 +123,7 @@ func (h *AccountHandler) List(c *fiber.Ctx) error {
 
 	accounts, total, err := h.usecase.List(c.Context(), limit, offset)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to list accounts",
-		})
+		return response.Error(c, fiber.StatusInternalServerError, "Failed to list accounts")
 	}
 
 	accountResponses := make([]dto.AccountResponse, len(accounts))
@@ -166,7 +142,7 @@ func (h *AccountHandler) List(c *fiber.Ctx) error {
 
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
-	response := dto.ListAccountResponse{
+	listResponse := dto.ListAccountResponse{
 		Data:       accountResponses,
 		Total:      total,
 		Limit:      limit,
@@ -174,31 +150,21 @@ func (h *AccountHandler) List(c *fiber.Ctx) error {
 		TotalPages: totalPages,
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"data": response,
-	})
+	return response.Success(c, "Accounts retrieved successfully", listResponse)
 }
 
 func (h *AccountHandler) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "id is required",
-		})
+		return response.BadRequest(c, "ID is required")
 	}
 
 	if err := h.usecase.Delete(c.Context(), id); err != nil {
 		if err == usecase.ErrAccountNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": err.Error(),
-			})
+			return response.NotFound(c, "Account not found")
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to delete account",
-		})
+		return response.Error(c, fiber.StatusInternalServerError, "Failed to delete account")
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "account deleted successfully",
-	})
+	return response.Success(c, "Account deleted successfully", nil)
 }

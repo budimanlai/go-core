@@ -1,0 +1,20 @@
+{
+  "welcome": "Welcome to Go Core Framework",
+  "account.registered": "Account registered successfully",
+  "account.login.success": "Login successful",
+  "account.retrieved": "Account retrieved successfully",
+  "account.list.success": "Accounts retrieved successfully",
+  "account.deleted": "Account deleted successfully",
+  "error.invalid_request": "Invalid request body",
+  "error.account_exists": "Account already exists",
+  "error.invalid_credentials": "Invalid credentials",
+  "error.account_inactive": "Account is inactive",
+  "error.account_not_found": "Account not found",
+  "error.internal_server": "Internal server error",
+  "error.failed_register": "Failed to register account",
+  "error.failed_login": "Failed to login",
+  "error.failed_retrieve": "Failed to retrieve account",
+  "error.failed_list": "Failed to list accounts",
+  "error.failed_delete": "Failed to delete account",
+  "validation.id_required": "ID is required"
+}

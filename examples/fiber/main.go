@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"log"
 
+	accountUsecase "github.com/budimanlai/go-core/account/domain/usecase"
 	accountHandler "github.com/budimanlai/go-core/account/handler"
 	accountPersistence "github.com/budimanlai/go-core/account/platform/persistence"
-	accountUsecase "github.com/budimanlai/go-core/account/domain/usecase"
 	"github.com/budimanlai/go-core/config"
 	"github.com/budimanlai/go-core/middleware/auth"
 	"github.com/budimanlai/go-core/middleware/cors"
 	"github.com/budimanlai/go-core/middleware/logging"
-	"github.com/budimanlai/go-core/middleware/recovery"
 	"github.com/budimanlai/go-core/middleware/ratelimit"
-	"github.com/budimanlai/go-core/pkg/crypto"
-	"github.com/budimanlai/go-core/pkg/logger"
+	"github.com/budimanlai/go-core/middleware/recovery"
+	"github.com/budimanlai/go-pkg/logger"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,8 +21,7 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
-	appLogger := logger.NewSimpleLogger()
-	appLogger.Info("Starting application...")
+	logger.Printf("Starting application...")
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
@@ -32,9 +30,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	appLogger.Info("Database connected successfully")
+	logger.Printf("Database connected successfully")
 
-	passwordHasher := crypto.NewBcryptHasher(10)
+	passwordHasher := accountUsecase.NewBcryptHasher()
 	jwtService := auth.NewJWTService(auth.JWTConfig{
 		SecretKey:       cfg.JWTSecret,
 		Issuer:          cfg.JWTIssuer,
@@ -55,7 +53,7 @@ func main() {
 	app.Use(logging.FiberLoggerMiddleware(logging.LoggerConfig{
 		SkipPaths: []string{"/health"},
 		LogFunc: func(entry logging.LogEntry) {
-			appLogger.Info(
+			logger.Infof(
 				"%s %s - Status: %d - Latency: %s - IP: %s",
 				entry.Method,
 				entry.Path,
@@ -87,7 +85,7 @@ func main() {
 	protected.Delete("/:id", accountHTTPHandler.Delete)
 
 	addr := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)
-	appLogger.Info("Server starting on %s", addr)
+	logger.Infof("Server starting on %s", addr)
 	if err := app.Listen(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

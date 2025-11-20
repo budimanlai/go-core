@@ -7,6 +7,7 @@ import (
 
 	"github.com/budimanlai/go-core/account/domain/entity"
 	"github.com/budimanlai/go-core/account/domain/repository"
+	"github.com/budimanlai/go-pkg/security"
 )
 
 var (
@@ -15,6 +16,32 @@ var (
 	ErrInvalidCredentials   = errors.New("invalid credentials")
 	ErrAccountInactive      = errors.New("account is inactive")
 )
+
+// PasswordHasher interface for dependency injection
+type PasswordHasher interface {
+	Hash(password string) (string, error)
+	Verify(hashedPassword, password string) bool
+}
+
+// BcryptHasher wraps go-pkg security functions
+type BcryptHasher struct{}
+
+func NewBcryptHasher() PasswordHasher {
+	return &BcryptHasher{}
+}
+
+func (h *BcryptHasher) Hash(password string) (string, error) {
+	hash := security.HashPassword(password)
+	if hash == "" {
+		return "", errors.New("failed to hash password")
+	}
+	return hash, nil
+}
+
+func (h *BcryptHasher) Verify(hashedPassword, password string) bool {
+	valid, _ := security.CheckPasswordHash(password, hashedPassword)
+	return valid
+}
 
 type AccountUsecase interface {
 	Register(ctx context.Context, email, username, password, fullName string) (*entity.Account, error)
@@ -27,20 +54,15 @@ type AccountUsecase interface {
 	Deactivate(ctx context.Context, id string) error
 }
 
-type PasswordHasher interface {
-	Hash(password string) (string, error)
-	Verify(hashedPassword, password string) bool
-}
-
 type accountUsecase struct {
-	repo           repository.AccountRepository
-	passwordHasher PasswordHasher
+	repo   repository.AccountRepository
+	hasher PasswordHasher
 }
 
 func NewAccountUsecase(repo repository.AccountRepository, hasher PasswordHasher) AccountUsecase {
 	return &accountUsecase{
-		repo:           repo,
-		passwordHasher: hasher,
+		repo:   repo,
+		hasher: hasher,
 	}
 }
 
@@ -55,7 +77,7 @@ func (u *accountUsecase) Register(ctx context.Context, email, username, password
 		return nil, ErrAccountAlreadyExists
 	}
 
-	hashedPassword, err := u.passwordHasher.Hash(password)
+	hashedPassword, err := u.hasher.Hash(password)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +113,7 @@ func (u *accountUsecase) Login(ctx context.Context, identifier, password string)
 		return nil, ErrAccountInactive
 	}
 
-	if !u.passwordHasher.Verify(account.Password, password) {
+	if !u.hasher.Verify(account.Password, password) {
 		return nil, ErrInvalidCredentials
 	}
 

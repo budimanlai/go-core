@@ -1,0 +1,20 @@
+{
+  "welcome": "Selamat datang di Go Core Framework",
+  "account.registered": "Akun berhasil didaftarkan",
+  "account.login.success": "Login berhasil",
+  "account.retrieved": "Akun berhasil diambil",
+  "account.list.success": "Daftar akun berhasil diambil",
+  "account.deleted": "Akun berhasil dihapus",
+  "error.invalid_request": "Body request tidak valid",
+  "error.account_exists": "Akun sudah ada",
+  "error.invalid_credentials": "Kredensial tidak valid",
+  "error.account_inactive": "Akun tidak aktif",
+  "error.account_not_found": "Akun tidak ditemukan",
+  "error.internal_server": "Kesalahan server internal",
+  "error.failed_register": "Gagal mendaftarkan akun",
+  "error.failed_login": "Gagal login",
+  "error.failed_retrieve": "Gagal mengambil akun",
+  "error.failed_list": "Gagal mengambil daftar akun",
+  "error.failed_delete": "Gagal menghapus akun",
+  "validation.id_required": "ID harus diisi"
+}
