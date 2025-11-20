@@ -10,17 +10,18 @@
 ### Step 1: Install Dependencies
 
 ```bash
-# Initialize Go module (if not already initialized)
-go mod init github.com/budimanlai/go-core
+# Clone the repository
+git clone https://github.com/budimanlai/go-core.git
+cd go-core
 
 # Install required packages
+go get github.com/budimanlai/go-pkg
 go get github.com/gofiber/fiber/v2
 go get github.com/golang-jwt/jwt/v5
 go get github.com/go-playground/validator/v10
 go get golang.org/x/crypto/bcrypt
 go get gorm.io/gorm
 go get gorm.io/driver/postgres
-go get gorm.io/driver/sqlite  # For development/testing
 
 # Download all dependencies
 go mod tidy
@@ -38,13 +39,18 @@ nano .env
 
 **Minimum configuration (.env):**
 ```env
+SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
-JWT_SECRET=your-super-secret-key-min-32-chars
+JWT_SECRET=your-super-secret-key-min-32-chars-long
+JWT_ISSUER=go-core
+JWT_EXPIRATION_HOURS=24
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=yourpassword
 DB_NAME=go_core_db
+DB_SSLMODE=disable
 ```
 
 ### Step 3: Setup Database (PostgreSQL)
@@ -59,9 +65,6 @@ CREATE DATABASE go_core_db;
 \q
 ```
 
-**For SQLite (Development):**
-No setup needed! Just change the database driver in your code.
-
 ### Step 4: Run Example Application
 
 ```bash
@@ -74,9 +77,9 @@ go run main.go
 
 You should see:
 ```
-[INFO] Starting application...
-[INFO] Database connected successfully
-[INFO] Server starting on 0.0.0.0:8080
+[2025-11-21 10:30:00] Starting application...
+[2025-11-21 10:30:00] Database connected successfully
+[2025-11-21 10:30:00] INFO: Server starting on 0.0.0.0:8080
 ```
 
 ### Step 5: Test the API
@@ -84,6 +87,14 @@ You should see:
 **Health Check:**
 ```bash
 curl http://localhost:8080/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "service": "go-core"
+}
 ```
 
 **Register Account:**
@@ -98,6 +109,26 @@ curl -X POST http://localhost:8080/api/v1/public/register \
   }'
 ```
 
+**Response:**
+```json
+{
+  "meta": {
+    "success": true,
+    "message": "Account registered successfully"
+  },
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "full_name": "John Doe",
+    "role": "user",
+    "is_active": true,
+    "created_at": "2025-11-21T10:30:15Z",
+    "updated_at": "2025-11-21T10:30:15Z"
+  }
+}
+```
+
 **Login:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/public/login \
@@ -108,6 +139,26 @@ curl -X POST http://localhost:8080/api/v1/public/login \
   }'
 ```
 
+**Response:**
+```json
+{
+  "meta": {
+    "success": true,
+    "message": "Login successful"
+  },
+  "data": {
+    "account": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "john@example.com",
+      "username": "johndoe"
+    },
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "Bearer",
+    "expires_in": 86400
+  }
+}
+```
+
 Save the `access_token` from the response.
 
 **Get Account (Protected):**
@@ -116,53 +167,68 @@ curl http://localhost:8080/api/v1/accounts/{id} \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-## 📦 Using in Your Project
-
-### As a Library
-
+**List Accounts (Protected):**
 ```bash
-# In your project directory
-go get github.com/budimanlai/go-core
+curl "http://localhost:8080/api/v1/accounts?limit=10&offset=0" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-### Import and Use
+## 📦 Using in Your Project
+
+### Import as Module
 
 ```go
-package main
-
 import (
-    "github.com/budimanlai/go-core/account/domain/usecase"
-    "github.com/budimanlai/go-core/account/platform/persistence"
+    accountHTTP "github.com/budimanlai/go-core/account/platform/http"
+    accountRepository "github.com/budimanlai/go-core/account/platform/repository"
+    accountSecurity "github.com/budimanlai/go-core/account/platform/security"
+    accountUsecase "github.com/budimanlai/go-core/account/platform/usecase"
+    "github.com/budimanlai/go-core/config"
     "github.com/budimanlai/go-core/middleware/auth"
-    "github.com/budimanlai/go-core/pkg/crypto"
 )
 
 func main() {
-    // Initialize components
-    db := setupDatabase()
+    // Load config
+    cfg := config.LoadConfig()
     
-    // Create repository
-    accountRepo := persistence.NewAccountRepository(db)
+    // Setup database
+    db := setupDatabase(cfg)
     
-    // Create use case
-    passwordHasher := crypto.NewBcryptHasher(10)
-    accountUC := usecase.NewAccountUsecase(accountRepo, passwordHasher)
+    // Initialize dependencies
+    passwordHasher := accountSecurity.NewBcryptHasher()
+    accountRepo := accountRepository.NewAccountRepository(db)
+    accountUC := accountUsecase.NewAccountUsecase(accountRepo, passwordHasher)
+    accountHandler := accountHTTP.NewAccountHandler(accountUC)
     
-    // Use JWT middleware
+    // Setup JWT
     jwtService := auth.NewJWTService(auth.JWTConfig{
-        SecretKey: "your-secret",
-        Issuer: "your-app",
-        ExpirationHours: 24,
+        SecretKey:       cfg.JWTSecret,
+        Issuer:          cfg.JWTIssuer,
+        ExpirationHours: cfg.JWTExpirationHours,
     })
     
-    // Add to your Fiber app
-    app.Use(auth.FiberJWTMiddleware(jwtService))
+    // Setup Fiber app
+    app := fiber.New()
+    
+    // Public routes
+    public := app.Group("/api/v1/public")
+    public.Post("/register", accountHandler.Register)
+    public.Post("/login", accountHandler.Login)
+    
+    // Protected routes
+    accounts := app.Group("/api/v1/accounts")
+    accounts.Use(auth.FiberJWTMiddleware(jwtService))
+    accounts.Get("/", accountHandler.List)
+    accounts.Get("/:id", accountHandler.GetByID)
+    accounts.Delete("/:id", accountHandler.Delete)
+    
+    app.Listen(":8080")
 }
 ```
 
 ## 🎯 Common Use Cases
 
-### Use Case 1: Add JWT Authentication to Existing App
+### Use Case 1: Add JWT Authentication
 
 ```go
 import "github.com/budimanlai/go-core/middleware/auth"
@@ -177,171 +243,87 @@ jwtService := auth.NewJWTService(auth.JWTConfig{
 app.Use(auth.FiberJWTMiddleware(jwtService))
 ```
 
-### Use Case 2: Add Account Management Module
-
-```go
-import (
-    accountHandler "github.com/budimanlai/go-core/account/handler"
-    accountPersistence "github.com/budimanlai/go-core/account/platform/persistence"
-    accountUsecase "github.com/budimanlai/go-core/account/domain/usecase"
-)
-
-// Setup
-accountRepo := accountPersistence.NewAccountRepository(db)
-accountUC := accountUsecase.NewAccountUsecase(accountRepo, passwordHasher)
-accountHandler := accountHandler.NewAccountHandler(accountUC)
-
-// Routes
-app.Post("/register", accountHandler.Register)
-app.Post("/login", accountHandler.Login)
-```
-
-### Use Case 3: Add All Middlewares
+### Use Case 2: Add All Middlewares
 
 ```go
 import (
     "github.com/budimanlai/go-core/middleware/cors"
     "github.com/budimanlai/go-core/middleware/logging"
-    "github.com/budimanlai/go-core/middleware/recovery"
     "github.com/budimanlai/go-core/middleware/ratelimit"
+    "github.com/budimanlai/go-core/middleware/recovery"
 )
 
 app.Use(recovery.FiberRecoveryMiddleware(recovery.DefaultConfig()))
 app.Use(cors.FiberCORSMiddleware(cors.DefaultConfig()))
-app.Use(logging.FiberLoggerMiddleware(logging.LoggerConfig{...}))
+app.Use(logging.FiberLoggerMiddleware(logging.DefaultConfig()))
 app.Use(ratelimit.FiberRateLimitMiddleware(ratelimit.DefaultConfig()))
 ```
 
-## 🔧 Development Workflow
+### Use Case 3: Implement Custom Business Logic
 
-### 1. Add New Module
+```go
+// 1. Define interface in domain/usecase
+type MyUsecase interface {
+    DoSomething(ctx context.Context, input string) (*Result, error)
+}
 
+// 2. Implement in platform/usecase
+type myUsecaseImpl struct {
+    repo MyRepository
+}
+
+func (u *myUsecaseImpl) DoSomething(ctx context.Context, input string) (*Result, error) {
+    // Your business logic here
+    return &Result{}, nil
+}
+
+// 3. Create handler in platform/http
+func (h *MyHandler) HandleRequest(c *fiber.Ctx) error {
+    result, err := h.usecase.DoSomething(c.Context(), input)
+    if err != nil {
+        return response.Error(c, 500, err.Error())
+    }
+    return response.Success(c, "Success", result)
+}
+```
+
+## 🔧 Troubleshooting
+
+### Database Connection Failed
 ```bash
-# Create structure (similar to account/)
-mkdir -p mymodule/{domain/{entity,repository,usecase},dto,models,platform/{http,grpc,persistence},handler}
+# Check PostgreSQL is running
+sudo systemctl status postgresql
 
-# Create files following the same pattern
-# See account module as reference
+# Test connection
+psql -U postgres -h localhost
 ```
 
-### 2. Run Tests
-
+### Port Already in Use
 ```bash
-# Run all tests
-go test ./...
+# Change SERVER_PORT in .env
+SERVER_PORT=8081
 
-# Run with coverage
-go test -cover ./...
-
-# Run specific package
-go test ./account/domain/usecase/...
+# Or kill process using port 8080
+lsof -ti:8080 | xargs kill -9
 ```
 
-### 3. Format Code
-
-```bash
-# Format all Go files
-go fmt ./...
-
-# Run linter
-golangci-lint run
-```
-
-### 4. Build
-
-```bash
-# Build binary
-go build -o bin/myapp examples/fiber/main.go
-
-# Run binary
-./bin/myapp
-```
-
-## 🐳 Docker Deployment (Optional)
-
-### Create Dockerfile
-
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go mod download
-RUN go build -o main examples/fiber/main.go
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/main .
-EXPOSE 8080
-CMD ["./main"]
-```
-
-### Build and Run
-
-```bash
-# Build image
-docker build -t go-core:latest .
-
-# Run container
-docker run -p 8080:8080 \
-  -e JWT_SECRET=your-secret \
-  -e DB_HOST=host.docker.internal \
-  go-core:latest
-```
-
-## 🔍 Troubleshooting
-
-### Database Connection Error
-```
-Error: Failed to connect to database
-```
-**Solution:**
-- Check PostgreSQL is running: `pg_isready`
-- Verify credentials in `.env`
-- Check firewall settings
-
-### JWT Error
-```
-Error: invalid or expired token
-```
-**Solution:**
-- Ensure JWT_SECRET is set and >= 32 characters
-- Check token hasn't expired
-- Verify Authorization header format: `Bearer <token>`
-
-### Import Error
-```
-Error: package github.com/budimanlai/go-core/xxx not found
-```
-**Solution:**
-```bash
-go mod tidy
-go get github.com/budimanlai/go-core
-```
+### JWT Token Invalid
+- Check JWT_SECRET in .env (minimum 32 characters)
+- Ensure token is not expired
+- Verify Authorization header format: `Bearer TOKEN`
 
 ## 📚 Next Steps
 
-1. ✅ Read [README.md](../README.md) for full documentation
-2. ✅ Study [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions
-3. ✅ Review [SECURITY.md](SECURITY.md) for security best practices
-4. ✅ Check [TESTING.md](TESTING.md) for testing strategies
-5. ✅ Explore example code in `examples/fiber/`
+1. **Read Architecture Docs:** `docs/ARCHITECTURE.md`
+2. **Learn Security Best Practices:** `docs/SECURITY.md`
+3. **Write Tests:** `docs/TESTING.md`
+4. **Explore Folder Structure:** `docs/STRUCTURE_SUMMARY.md`
 
-## 💡 Tips
+## 🆘 Need Help?
 
-- Start with the example application in `examples/fiber/`
-- Use SQLite for quick development/testing
-- Follow the existing module patterns (account, region)
-- Write tests as you develop
-- Keep domain layer free from external dependencies
-
-## 🤝 Getting Help
-
-- Check the documentation in `/docs`
-- Review example implementations
-- Look at test files for usage examples
+- Check existing examples in `examples/`
+- Read inline code documentation
 - Open an issue on GitHub
-
----
+- Consult `.clinerules` for development guidelines
 
 **Happy coding! 🚀**
