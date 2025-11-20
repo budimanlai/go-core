@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	accountUsecase "github.com/budimanlai/go-core/account/domain/usecase"
 	accountHandler "github.com/budimanlai/go-core/account/handler"
 	accountPersistence "github.com/budimanlai/go-core/account/platform/persistence"
+	accountSecurity "github.com/budimanlai/go-core/account/platform/security"
+	accountUsecase "github.com/budimanlai/go-core/account/platform/usecase"
 	"github.com/budimanlai/go-core/config"
 	"github.com/budimanlai/go-core/middleware/auth"
 	"github.com/budimanlai/go-core/middleware/cors"
@@ -32,7 +33,7 @@ func main() {
 	}
 	logger.Printf("Database connected successfully")
 
-	passwordHasher := accountUsecase.NewBcryptHasher()
+	passwordHasher := accountSecurity.NewBcryptHasher()
 	jwtService := auth.NewJWTService(auth.JWTConfig{
 		SecretKey:       cfg.JWTSecret,
 		Issuer:          cfg.JWTIssuer,
