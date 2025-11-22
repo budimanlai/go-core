@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	accountHTTP "github.com/budimanlai/go-core/account/platform/http"
-	accountRepository "github.com/budimanlai/go-core/account/platform/repository"
-	accountSecurity "github.com/budimanlai/go-core/account/platform/security"
-	accountUsecase "github.com/budimanlai/go-core/account/platform/usecase"
+	userHTTP "github.com/budimanlai/go-core/account/platform/http"
+	userRepository "github.com/budimanlai/go-core/account/platform/repository"
+	userSecurity "github.com/budimanlai/go-core/account/platform/security"
+	userUsecase "github.com/budimanlai/go-core/account/platform/usecase"
 	"github.com/budimanlai/go-core/config"
 	"github.com/budimanlai/go-core/middleware/auth"
 	"github.com/budimanlai/go-core/middleware/cors"
@@ -33,16 +33,16 @@ func main() {
 	}
 	logger.Printf("Database connected successfully")
 
-	passwordHasher := accountSecurity.NewBcryptHasher()
+	passwordHasher := userSecurity.NewBcryptHasher()
 	jwtService := auth.NewJWTService(auth.JWTConfig{
 		SecretKey:       cfg.JWTSecret,
 		Issuer:          cfg.JWTIssuer,
 		ExpirationHours: cfg.JWTExpirationHours,
 	})
 
-	accountRepo := accountRepository.NewAccountRepository(db)
-	accountUC := accountUsecase.NewAccountUsecase(accountRepo, passwordHasher)
-	accountHTTPHandler := accountHTTP.NewAccountHandler(accountUC)
+	userRepo := userRepository.NewUserRepository(db)
+	userUC := userUsecase.NewUserUsecase(userRepo, passwordHasher)
+	userHTTPHandler := userHTTP.NewUserHandler(userUC)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "Go Core Example",
@@ -76,14 +76,21 @@ func main() {
 	api := app.Group("/api/v1")
 
 	public := api.Group("/public")
-	public.Post("/register", accountHTTPHandler.Register)
-	public.Post("/login", accountHTTPHandler.Login)
+	public.Post("/register", userHTTPHandler.Register)
+	public.Post("/login", userHTTPHandler.Login)
+	public.Get("/verify", userHTTPHandler.VerifyEmail)
 
-	protected := api.Group("/accounts")
+	protected := api.Group("/users")
 	protected.Use(auth.FiberJWTMiddleware(jwtService))
-	protected.Get("/", accountHTTPHandler.List)
-	protected.Get("/:id", accountHTTPHandler.GetByID)
-	protected.Delete("/:id", accountHTTPHandler.Delete)
+	protected.Get("/", userHTTPHandler.List)
+	protected.Get("/:id", userHTTPHandler.GetByID)
+	protected.Put("/:id", userHTTPHandler.Update)
+	protected.Delete("/:id", userHTTPHandler.Delete)
+	protected.Post("/:id/activate", userHTTPHandler.Activate)
+	protected.Post("/:id/deactivate", userHTTPHandler.Deactivate)
+	protected.Post("/:id/suspend", userHTTPHandler.Suspend)
+	protected.Post("/:id/dashboard/enable", userHTTPHandler.EnableDashboard)
+	protected.Post("/:id/dashboard/disable", userHTTPHandler.DisableDashboard)
 
 	addr := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)
 	logger.Infof("Server starting on %s", addr)

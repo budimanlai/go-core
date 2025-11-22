@@ -1,170 +1,201 @@
 package http
 
 import (
-	"math"
 	"strconv"
 
 	"github.com/budimanlai/go-core/account/domain/usecase"
 	"github.com/budimanlai/go-core/account/dto"
+
 	"github.com/budimanlai/go-pkg/response"
 	"github.com/gofiber/fiber/v2"
 )
 
-type AccountHandler struct {
-	usecase usecase.AccountUsecase
+type UserHandler struct {
+	usecase usecase.UserUsecase
 }
 
-func NewAccountHandler(usecase usecase.AccountUsecase) *AccountHandler {
-	return &AccountHandler{
+func NewUserHandler(usecase usecase.UserUsecase) *UserHandler {
+	return &UserHandler{
 		usecase: usecase,
 	}
 }
 
-func (h *AccountHandler) Register(c *fiber.Ctx) error {
+func (h *UserHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
 		return response.BadRequest(c, "Invalid request body")
 	}
 
-	account, err := h.usecase.Register(c.Context(), req.Email, req.Username, req.Password, req.FullName)
+	user, err := h.usecase.Register(c.Context(), &req)
 	if err != nil {
-		if err == usecase.ErrAccountAlreadyExists {
-			return response.Error(c, fiber.StatusConflict, err.Error())
-		}
-		return response.Error(c, fiber.StatusInternalServerError, "Failed to register account")
-	}
-
-	accountResponse := dto.AccountResponse{
-		ID:        account.ID,
-		Email:     account.Email,
-		Username:  account.Username,
-		FullName:  account.FullName,
-		Role:      account.Role,
-		IsActive:  account.IsActive,
-		CreatedAt: account.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
 	c.Status(fiber.StatusCreated)
-	return response.Success(c, "Account registered successfully", accountResponse)
+	return response.Success(c, "User registered successfully", user)
 }
 
-func (h *AccountHandler) Login(c *fiber.Ctx) error {
+func (h *UserHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return response.BadRequest(c, "Invalid request body")
 	}
 
-	account, err := h.usecase.Login(c.Context(), req.Identifier, req.Password)
+	loginResp, err := h.usecase.Login(c.Context(), &req)
 	if err != nil {
-		if err == usecase.ErrInvalidCredentials || err == usecase.ErrAccountInactive {
-			return response.Error(c, fiber.StatusUnauthorized, err.Error())
-		}
-		return response.Error(c, fiber.StatusInternalServerError, "Failed to login")
+		return response.Error(c, fiber.StatusUnauthorized, err.Error())
 	}
 
-	loginResponse := dto.LoginResponse{
-		Account: dto.AccountResponse{
-			ID:        account.ID,
-			Email:     account.Email,
-			Username:  account.Username,
-			FullName:  account.FullName,
-			Role:      account.Role,
-			IsActive:  account.IsActive,
-			CreatedAt: account.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		},
-		AccessToken: "TODO: generate token",
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-	}
-
-	return response.Success(c, "Login successful", loginResponse)
+	return response.Success(c, "Login successful", loginResp)
 }
 
-func (h *AccountHandler) GetByID(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return response.BadRequest(c, "ID is required")
-	}
-
-	account, err := h.usecase.GetByID(c.Context(), id)
+func (h *UserHandler) GetByID(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		if err == usecase.ErrAccountNotFound {
-			return response.NotFound(c, "Account not found")
-		}
-		return response.Error(c, fiber.StatusInternalServerError, "Failed to get account")
+		return response.BadRequest(c, "Invalid ID")
 	}
 
-	accountResponse := dto.AccountResponse{
-		ID:        account.ID,
-		Email:     account.Email,
-		Username:  account.Username,
-		FullName:  account.FullName,
-		Role:      account.Role,
-		IsActive:  account.IsActive,
-		CreatedAt: account.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	user, err := h.usecase.GetByID(c.Context(), uint(id))
+	if err != nil {
+		return response.Error(c, fiber.StatusNotFound, err.Error())
 	}
 
-	return response.Success(c, "Account retrieved successfully", accountResponse)
+	return response.Success(c, "User retrieved successfully", user)
 }
 
-func (h *AccountHandler) List(c *fiber.Ctx) error {
-	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	offset, _ := strconv.Atoi(c.Query("offset", "0"))
-
-	if limit <= 0 {
-		limit = 10
-	}
-	if limit > 100 {
-		limit = 100
-	}
-
-	accounts, total, err := h.usecase.List(c.Context(), limit, offset)
+func (h *UserHandler) Update(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "Failed to list accounts")
+		return response.BadRequest(c, "Invalid ID")
 	}
 
-	accountResponses := make([]dto.AccountResponse, len(accounts))
-	for i, account := range accounts {
-		accountResponses[i] = dto.AccountResponse{
-			ID:        account.ID,
-			Email:     account.Email,
-			Username:  account.Username,
-			FullName:  account.FullName,
-			Role:      account.Role,
-			IsActive:  account.IsActive,
-			CreatedAt: account.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: account.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		}
+	var req dto.UpdateUserRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(c, "Invalid request body")
 	}
 
-	totalPages := int(math.Ceil(float64(total) / float64(limit)))
-
-	listResponse := dto.ListAccountResponse{
-		Data:       accountResponses,
-		Total:      total,
-		Limit:      limit,
-		Offset:     offset,
-		TotalPages: totalPages,
+	user, err := h.usecase.Update(c.Context(), uint(id), &req)
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "Accounts retrieved successfully", listResponse)
+	return response.Success(c, "User updated successfully", user)
 }
 
-func (h *AccountHandler) Delete(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return response.BadRequest(c, "ID is required")
+func (h *UserHandler) Delete(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.Delete(c.Context(), id); err != nil {
-		if err == usecase.ErrAccountNotFound {
-			return response.NotFound(c, "Account not found")
-		}
-		return response.Error(c, fiber.StatusInternalServerError, "Failed to delete account")
+	if err := h.usecase.Delete(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "Account deleted successfully", nil)
+	return response.Success(c, "User deleted successfully", nil)
+}
+
+func (h *UserHandler) List(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	listResp, err := h.usecase.List(c.Context(), page, pageSize)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return response.Success(c, "Users retrieved successfully", listResp)
+}
+
+func (h *UserHandler) Activate(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
+	}
+
+	if err := h.usecase.Activate(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "User activated successfully", nil)
+}
+
+func (h *UserHandler) Deactivate(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
+	}
+
+	if err := h.usecase.Deactivate(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "User deactivated successfully", nil)
+}
+
+func (h *UserHandler) Suspend(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
+	}
+
+	if err := h.usecase.Suspend(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "User suspended successfully", nil)
+}
+
+func (h *UserHandler) VerifyEmail(c *fiber.Ctx) error {
+	token := c.Query("token")
+	if token == "" {
+		return response.BadRequest(c, "Verification token is required")
+	}
+
+	if err := h.usecase.VerifyEmail(c.Context(), token); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "Email verified successfully", nil)
+}
+
+func (h *UserHandler) EnableDashboard(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
+	}
+
+	if err := h.usecase.EnableDashboard(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "Dashboard access enabled successfully", nil)
+}
+
+func (h *UserHandler) DisableDashboard(c *fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID")
+	}
+
+	if err := h.usecase.DisableDashboard(c.Context(), uint(id)); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	}
+
+	return response.Success(c, "Dashboard access disabled successfully", nil)
 }
