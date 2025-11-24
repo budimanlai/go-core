@@ -5,7 +5,7 @@ import (
 )
 
 type UserUsecase interface {
-	Register(req *dto.RegisterRequest) (*dto.UserResponse, error)
+	Register(req *dto.RegisterRequest) (interface{}, error)
 	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
 	GetByID(id uint) (*dto.UserResponse, error)
 	Update(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error)

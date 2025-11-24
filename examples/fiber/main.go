@@ -8,6 +8,7 @@ import (
 	userRepository "github.com/budimanlai/go-core/account/platform/repository"
 	userSecurity "github.com/budimanlai/go-core/account/platform/security"
 	userUsecase "github.com/budimanlai/go-core/account/platform/usecase"
+	customUC "github.com/budimanlai/go-core/examples/fiber/usecase"
 	pkg_databases "github.com/budimanlai/go-pkg/databases"
 
 	"github.com/budimanlai/go-core/config"
@@ -51,6 +52,7 @@ func main() {
 
 	userRepo := userRepository.NewUserRepository(db)
 	userUC := userUsecase.NewUserUsecase(userRepo, passwordHasher)
+	_ = customUC.NewCustomUserUsecase(userUC, userRepo, passwordHasher)
 	userHTTPHandler := userHTTP.NewUserHandler(userUC)
 
 	app := fiber.New(fiber.Config{

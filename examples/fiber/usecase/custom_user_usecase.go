@@ -1,8 +1,6 @@
 package usecase
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -12,6 +10,8 @@ import (
 	"github.com/budimanlai/go-core/account/domain/usecase"
 	"github.com/budimanlai/go-core/account/dto"
 	"github.com/budimanlai/go-core/account/platform/security"
+	"github.com/budimanlai/go-pkg/helpers"
+	"github.com/budimanlai/go-pkg/logger"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
@@ -39,7 +39,7 @@ func NewCustomUserUsecase(userUsecase usecase.UserUsecase, repo repository.UserR
 	}
 }
 
-func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (*dto.UserResponse, error) {
+func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (interface{}, error) {
 	// Check if email exists
 	existingUser, err := u.repo.FindByEmail(req.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -74,16 +74,10 @@ func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (*dto.UserRespons
 	}
 
 	// Generate auth key
-	authKey, err := generateAuthKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate auth key: %w", err)
-	}
+	authKey := helpers.GenerateRandomString(16)
 
 	// Generate verification token
-	verificationToken, err := generateVerificationToken()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate verification token: %w", err)
-	}
+	verificationToken := helpers.GenerateRandomString(32)
 
 	now := time.Now()
 	var user entity.User
@@ -105,24 +99,11 @@ func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (*dto.UserRespons
 	return toUserResponse(&user), nil
 }
 
-func toUserResponse(user *entity.User) *dto.UserResponse {
-	var response dto.UserResponse
-	copier.Copy(&response, user)
+func toUserResponse(user *entity.User) interface{} {
+	logger.Printf("Custom toUserResponse")
+	var response CustomUserResponse = CustomUserResponse{}
+	copier.Copy(&response.Profile, user)
+	response.Token.AccessToken = "access-token"
+	response.Token.RefreshToken = "refresh-token"
 	return &response
-}
-
-func generateAuthKey() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func generateVerificationToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }
