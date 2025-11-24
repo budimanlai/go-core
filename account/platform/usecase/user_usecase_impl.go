@@ -87,7 +87,7 @@ func (u *userUsecaseImpl) Register(req *dto.RegisterRequest) (interface{}, error
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return u.ToResponse(&user), nil
+	return u.toResponse(&user), nil
 }
 
 func (u *userUsecaseImpl) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -112,7 +112,7 @@ func (u *userUsecaseImpl) Login(req *dto.LoginRequest) (*dto.LoginResponse, erro
 
 	return &dto.LoginResponse{
 		Token: token,
-		User:  u.ToResponse(user).(*dto.UserResponse),
+		User:  u.toResponse(user).(*dto.UserResponse),
 	}, nil
 }
 
@@ -124,7 +124,7 @@ func (u *userUsecaseImpl) GetByID(id uint) (*dto.UserResponse, error) {
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	return u.ToResponse(user).(*dto.UserResponse), nil
+	return u.toResponse(user).(*dto.UserResponse), nil
 }
 
 func (u *userUsecaseImpl) Update(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
@@ -147,7 +147,7 @@ func (u *userUsecaseImpl) Update(id uint, req *dto.UpdateUserRequest) (*dto.User
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return u.ToResponse(user).(*dto.UserResponse), nil
+	return u.toResponse(user).(*dto.UserResponse), nil
 }
 
 func (u *userUsecaseImpl) Delete(id uint) error {
@@ -268,11 +268,11 @@ func (u *userUsecaseImpl) DisableDashboard(id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) SetCustomToResponse(customToResponse func(*entity.User) interface{}) {
+func (u *userUsecaseImpl) SetCustomResponse(customToResponse func(*entity.User) interface{}) {
 	u.CustomToResponse = customToResponse
 }
 
-func (u *userUsecaseImpl) ToResponse(user *entity.User) interface{} {
+func (u *userUsecaseImpl) toResponse(user *entity.User) interface{} {
 	if u.CustomToResponse != nil {
 		return u.CustomToResponse(user)
 	}

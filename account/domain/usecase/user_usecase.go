@@ -18,6 +18,5 @@ type UserUsecase interface {
 	VerifyEmail(token string) error
 	EnableDashboard(id uint) error
 	DisableDashboard(id uint) error
-	ToResponse(user *entity.User) interface{}
-	SetCustomToResponse(customToResponse func(*entity.User) interface{})
+	SetCustomResponse(customToResponse func(*entity.User) interface{})
 }
