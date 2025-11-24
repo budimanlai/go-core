@@ -17,14 +17,16 @@ import (
 )
 
 type userUsecaseImpl struct {
-	repo   repository.UserRepository
-	hasher security.PasswordHasher
+	repo             repository.UserRepository
+	hasher           security.PasswordHasher
+	CustomToResponse func(*entity.User) interface{}
 }
 
 func NewUserUsecase(repo repository.UserRepository, hasher security.PasswordHasher) usecase.UserUsecase {
 	return &userUsecaseImpl{
-		repo:   repo,
-		hasher: hasher,
+		repo:             repo,
+		hasher:           hasher,
+		CustomToResponse: nil,
 	}
 }
 
@@ -85,7 +87,7 @@ func (u *userUsecaseImpl) Register(req *dto.RegisterRequest) (interface{}, error
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return toUserResponse(&user), nil
+	return u.ToResponse(&user), nil
 }
 
 func (u *userUsecaseImpl) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -110,7 +112,7 @@ func (u *userUsecaseImpl) Login(req *dto.LoginRequest) (*dto.LoginResponse, erro
 
 	return &dto.LoginResponse{
 		Token: token,
-		User:  toUserResponse(user),
+		User:  u.ToResponse(user).(*dto.UserResponse),
 	}, nil
 }
 
@@ -122,7 +124,7 @@ func (u *userUsecaseImpl) GetByID(id uint) (*dto.UserResponse, error) {
 		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	return toUserResponse(user), nil
+	return u.ToResponse(user).(*dto.UserResponse), nil
 }
 
 func (u *userUsecaseImpl) Update(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
@@ -145,7 +147,7 @@ func (u *userUsecaseImpl) Update(id uint, req *dto.UpdateUserRequest) (*dto.User
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return toUserResponse(user), nil
+	return u.ToResponse(user).(*dto.UserResponse), nil
 }
 
 func (u *userUsecaseImpl) Delete(id uint) error {
@@ -266,7 +268,14 @@ func (u *userUsecaseImpl) DisableDashboard(id uint) error {
 	return u.repo.Update(user)
 }
 
-func toUserResponse(user *entity.User) *dto.UserResponse {
+func (u *userUsecaseImpl) SetCustomToResponse(customToResponse func(*entity.User) interface{}) {
+	u.CustomToResponse = customToResponse
+}
+
+func (u *userUsecaseImpl) ToResponse(user *entity.User) interface{} {
+	if u.CustomToResponse != nil {
+		return u.CustomToResponse(user)
+	}
 	var response dto.UserResponse
 	copier.Copy(&response, user)
 	return &response

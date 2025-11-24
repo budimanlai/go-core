@@ -32,14 +32,17 @@ type CustomUserResponse struct {
 }
 
 func NewCustomUserUsecase(userUsecase usecase.UserUsecase, repo repository.UserRepository, hasher security.PasswordHasher) usecase.UserUsecase {
-	return &CustomUserUsecase{
+	obj := &CustomUserUsecase{
 		UserUsecase: userUsecase,
 		repo:        repo,
 		hasher:      hasher,
 	}
+	obj.SetCustomToResponse(obj.ToResponse)
+
+	return obj
 }
 
-func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (interface{}, error) {
+func (u *CustomUserUsecase) Register1(req *dto.RegisterRequest) (interface{}, error) {
 	// Check if email exists
 	existingUser, err := u.repo.FindByEmail(req.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -74,7 +77,7 @@ func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (interface{}, err
 	}
 
 	// Generate auth key
-	authKey := helpers.GenerateRandomString(16)
+	authKey := helpers.GenerateRandomString(32)
 
 	// Generate verification token
 	verificationToken := helpers.GenerateRandomString(32)
@@ -96,10 +99,10 @@ func (u *CustomUserUsecase) Register(req *dto.RegisterRequest) (interface{}, err
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return toUserResponse(&user), nil
+	return u.ToResponse(&user), nil
 }
 
-func toUserResponse(user *entity.User) interface{} {
+func (u *CustomUserUsecase) ToResponse(user *entity.User) interface{} {
 	logger.Printf("Custom toUserResponse")
 	var response CustomUserResponse = CustomUserResponse{}
 	copier.Copy(&response.Profile, user)

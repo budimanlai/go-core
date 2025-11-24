@@ -52,8 +52,12 @@ func main() {
 
 	userRepo := userRepository.NewUserRepository(db)
 	userUC := userUsecase.NewUserUsecase(userRepo, passwordHasher)
-	_ = customUC.NewCustomUserUsecase(userUC, userRepo, passwordHasher)
+
+	userU1 := userUsecase.NewUserUsecase(userRepo, passwordHasher)
+	customUserUC := customUC.NewCustomUserUsecase(userU1, userRepo, passwordHasher)
+
 	userHTTPHandler := userHTTP.NewUserHandler(userUC)
+	customUserHTTPHandler := userHTTP.NewUserHandler(customUserUC)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "Go Core Example",
@@ -88,6 +92,7 @@ func main() {
 
 	public := api.Group("/public")
 	public.Post("/register", userHTTPHandler.Register)
+	public.Post("/register-custom", customUserHTTPHandler.Register)
 	public.Post("/login", userHTTPHandler.Login)
 	public.Get("/verify", userHTTPHandler.VerifyEmail)
 

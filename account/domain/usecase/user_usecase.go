@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/budimanlai/go-core/account/domain/entity"
 	"github.com/budimanlai/go-core/account/dto"
 )
 
@@ -17,4 +18,6 @@ type UserUsecase interface {
 	VerifyEmail(token string) error
 	EnableDashboard(id uint) error
 	DisableDashboard(id uint) error
+	ToResponse(user *entity.User) interface{}
+	SetCustomToResponse(customToResponse func(*entity.User) interface{})
 }
