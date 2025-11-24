@@ -4,7 +4,7 @@
 
 ### Prerequisites
 - Go 1.21 or higher
-- PostgreSQL 12+ (optional, can use SQLite for development)
+- MySql or PostgreSQL 12+ (optional, can use SQLite for development)
 - Git
 
 ### Step 1: Install Dependencies

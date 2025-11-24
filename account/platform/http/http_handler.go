@@ -23,7 +23,7 @@ func NewUserHandler(usecase usecase.UserUsecase) *UserHandler {
 func (h *UserHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "Invalid request body")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	user, err := h.usecase.Register(c.Context(), &req)
@@ -32,13 +32,13 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 	}
 
 	c.Status(fiber.StatusCreated)
-	return response.Success(c, "User registered successfully", user)
+	return response.SuccessI18n(c, "app.success", user)
 }
 
 func (h *UserHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "Invalid request body")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	loginResp, err := h.usecase.Login(c.Context(), &req)
@@ -46,14 +46,14 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnauthorized, err.Error())
 	}
 
-	return response.Success(c, "Login successful", loginResp)
+	return response.SuccessI18n(c, "app.success", loginResp)
 }
 
 func (h *UserHandler) GetByID(c *fiber.Ctx) error {
 	idStr := c.Params("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "Invalid ID")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	user, err := h.usecase.GetByID(c.Context(), uint(id))
@@ -61,19 +61,19 @@ func (h *UserHandler) GetByID(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, err.Error())
 	}
 
-	return response.Success(c, "User retrieved successfully", user)
+	return response.SuccessI18n(c, "app.success", user)
 }
 
 func (h *UserHandler) Update(c *fiber.Ctx) error {
 	idStr := c.Params("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "Invalid ID")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	var req dto.UpdateUserRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "Invalid request body")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	user, err := h.usecase.Update(c.Context(), uint(id), &req)
@@ -81,21 +81,21 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "User updated successfully", user)
+	return response.SuccessI18n(c, "app.success", user)
 }
 
 func (h *UserHandler) Delete(c *fiber.Ctx) error {
 	idStr := c.Params("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		return response.BadRequest(c, "Invalid ID")
+		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
 	if err := h.usecase.Delete(c.Context(), uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "User deleted successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) List(c *fiber.Ctx) error {
@@ -114,7 +114,7 @@ func (h *UserHandler) List(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, err.Error())
 	}
 
-	return response.Success(c, "Users retrieved successfully", listResp)
+	return response.SuccessI18n(c, "app.success", listResp)
 }
 
 func (h *UserHandler) Activate(c *fiber.Ctx) error {
@@ -128,7 +128,7 @@ func (h *UserHandler) Activate(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "User activated successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) Deactivate(c *fiber.Ctx) error {
@@ -142,7 +142,7 @@ func (h *UserHandler) Deactivate(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "User deactivated successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) Suspend(c *fiber.Ctx) error {
@@ -156,7 +156,7 @@ func (h *UserHandler) Suspend(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "User suspended successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) VerifyEmail(c *fiber.Ctx) error {
@@ -169,7 +169,7 @@ func (h *UserHandler) VerifyEmail(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "Email verified successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) EnableDashboard(c *fiber.Ctx) error {
@@ -183,7 +183,7 @@ func (h *UserHandler) EnableDashboard(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "Dashboard access enabled successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }
 
 func (h *UserHandler) DisableDashboard(c *fiber.Ctx) error {
@@ -197,5 +197,5 @@ func (h *UserHandler) DisableDashboard(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	return response.Success(c, "Dashboard access disabled successfully", nil)
+	return response.SuccessI18n(c, "app.success", nil)
 }

@@ -1,12 +1,11 @@
 package repository
 
 import (
-	"time"
-
 	"github.com/budimanlai/go-core/account/domain/entity"
 	"github.com/budimanlai/go-core/account/domain/repository"
 	"github.com/budimanlai/go-core/account/models"
 
+	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
@@ -89,84 +88,21 @@ func (r *userRepositoryImpl) List(limit, offset int) ([]*entity.User, int64, err
 	}
 
 	users := make([]*entity.User, len(modelList))
-	for i, model := range modelList {
-		users[i] = toEntity(&model)
+	if err := copier.Copy(&users, &modelList); err != nil {
+		return nil, 0, err
 	}
 
 	return users, total, nil
 }
 
 func toEntity(model *models.User) *entity.User {
-	var deletedAt *time.Time
-	if model.DeletedAt.Valid {
-		deletedAt = &model.DeletedAt.Time
-	}
-
-	return &entity.User{
-		ID:                 model.ID,
-		Username:           model.Username,
-		AuthKey:            model.AuthKey,
-		PasswordHash:       model.PasswordHash,
-		PasswordResetToken: model.PasswordResetToken,
-		Email:              model.Email,
-		Fullname:           model.Fullname,
-		Handphone:          model.Handphone,
-		Dob:                model.Dob,
-		Gender:             model.Gender,
-		Status:             model.Status,
-		MainRole:           model.MainRole,
-		LoginDashboard:     model.LoginDashboard,
-		Avatar:             model.Avatar,
-		Address:            model.Address,
-		Zipcode:            model.Zipcode,
-		DistrictID:         model.DistrictID,
-		SubdistrictID:      model.SubdistrictID,
-		CityID:             model.CityID,
-		ProvinceID:         model.ProvinceID,
-		CountryID:          model.CountryID,
-		CreatedAt:          model.CreatedAt,
-		CreatedBy:          model.CreatedBy,
-		UpdatedAt:          model.UpdatedAt,
-		UpdatedBy:          model.UpdatedBy,
-		VerificationToken:  model.VerificationToken,
-		DeletedAt:          deletedAt,
-	}
+	var user entity.User
+	copier.Copy(&user, model)
+	return &user
 }
 
 func toModel(user *entity.User) *models.User {
-	var deletedAt gorm.DeletedAt
-	if user.DeletedAt != nil {
-		deletedAt.Time = *user.DeletedAt
-		deletedAt.Valid = true
-	}
-
-	return &models.User{
-		ID:                 user.ID,
-		Username:           user.Username,
-		AuthKey:            user.AuthKey,
-		PasswordHash:       user.PasswordHash,
-		PasswordResetToken: user.PasswordResetToken,
-		Email:              user.Email,
-		Fullname:           user.Fullname,
-		Handphone:          user.Handphone,
-		Dob:                user.Dob,
-		Gender:             user.Gender,
-		Status:             user.Status,
-		MainRole:           user.MainRole,
-		LoginDashboard:     user.LoginDashboard,
-		Avatar:             user.Avatar,
-		Address:            user.Address,
-		Zipcode:            user.Zipcode,
-		DistrictID:         user.DistrictID,
-		SubdistrictID:      user.SubdistrictID,
-		CityID:             user.CityID,
-		ProvinceID:         user.ProvinceID,
-		CountryID:          user.CountryID,
-		CreatedAt:          user.CreatedAt,
-		CreatedBy:          user.CreatedBy,
-		UpdatedAt:          user.UpdatedAt,
-		UpdatedBy:          user.UpdatedBy,
-		VerificationToken:  user.VerificationToken,
-		DeletedAt:          deletedAt,
-	}
+	var model models.User
+	copier.Copy(&model, user)
+	return &model
 }

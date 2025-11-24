@@ -14,6 +14,7 @@ import (
 	"github.com/budimanlai/go-core/account/dto"
 	"github.com/budimanlai/go-core/account/platform/security"
 
+	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
@@ -76,36 +77,23 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 	}
 
 	now := time.Now()
-	user := &entity.User{
-		Username:          req.Username,
-		AuthKey:           authKey,
-		PasswordHash:      hashedPassword,
-		Email:             req.Email,
-		Fullname:          req.Fullname,
-		Handphone:         req.Handphone,
-		Dob:               req.Dob,
-		Gender:            req.Gender,
-		Status:            "active",
-		LoginDashboard:    "N",
-		Zipcode:           req.Zipcode,
-		DistrictID:        req.DistrictID,
-		SubdistrictID:     req.SubdistrictID,
-		CityID:            req.CityID,
-		ProvinceID:        req.ProvinceID,
-		CountryID:         req.CountryID,
-		Address:           req.Address,
-		VerificationToken: &verificationToken,
-		CreatedAt:         now,
-		CreatedBy:         0,
-		UpdatedAt:         now,
-		UpdatedBy:         0,
+	var user entity.User
+	if err := copier.Copy(&user, req); err != nil {
+		return nil, fmt.Errorf("failed to copy request to user: %w", err)
 	}
+	user.AuthKey = authKey
+	user.PasswordHash = hashedPassword
+	user.Status = "active"
+	user.LoginDashboard = "N"
+	user.VerificationToken = &verificationToken
+	user.CreatedAt = now
+	user.UpdatedAt = now
 
-	if err := u.repo.Create(user); err != nil {
+	if err := u.repo.Create(&user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return toUserResponse(user), nil
+	return toUserResponse(&user), nil
 }
 
 func (u *userUsecaseImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -154,41 +142,8 @@ func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUs
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if req.Fullname != nil {
-		user.Fullname = *req.Fullname
-	}
-	if req.Handphone != nil {
-		user.Handphone = *req.Handphone
-	}
-	if req.Dob != nil {
-		user.Dob = req.Dob
-	}
-	if req.Gender != nil {
-		user.Gender = *req.Gender
-	}
-	if req.Address != nil {
-		user.Address = req.Address
-	}
-	if req.Zipcode != nil {
-		user.Zipcode = *req.Zipcode
-	}
-	if req.DistrictID != nil {
-		user.DistrictID = *req.DistrictID
-	}
-	if req.SubdistrictID != nil {
-		user.SubdistrictID = *req.SubdistrictID
-	}
-	if req.CityID != nil {
-		user.CityID = *req.CityID
-	}
-	if req.ProvinceID != nil {
-		user.ProvinceID = *req.ProvinceID
-	}
-	if req.CountryID != nil {
-		user.CountryID = *req.CountryID
-	}
-	if req.Avatar != nil {
-		user.Avatar = req.Avatar
+	if err := copier.CopyWithOption(user, req, copier.Option{IgnoreEmpty: true}); err != nil {
+		return nil, fmt.Errorf("failed to copy request to user: %w", err)
 	}
 
 	user.UpdatedAt = time.Now()
@@ -229,8 +184,8 @@ func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.Li
 	}
 
 	userResponses := make([]*dto.UserResponse, len(users))
-	for i, user := range users {
-		userResponses[i] = toUserResponse(user)
+	if err := copier.Copy(&userResponses, &users); err != nil {
+		return nil, fmt.Errorf("failed to copy users to response: %w", err)
 	}
 
 	return &dto.ListUserResponse{
@@ -320,28 +275,9 @@ func (u *userUsecaseImpl) DisableDashboard(ctx context.Context, id uint) error {
 }
 
 func toUserResponse(user *entity.User) *dto.UserResponse {
-	return &dto.UserResponse{
-		ID:             user.ID,
-		Username:       user.Username,
-		Email:          user.Email,
-		Fullname:       user.Fullname,
-		Handphone:      user.Handphone,
-		Dob:            user.Dob,
-		Gender:         user.Gender,
-		Status:         user.Status,
-		MainRole:       user.MainRole,
-		LoginDashboard: user.LoginDashboard,
-		Avatar:         user.Avatar,
-		Address:        user.Address,
-		Zipcode:        user.Zipcode,
-		DistrictID:     user.DistrictID,
-		SubdistrictID:  user.SubdistrictID,
-		CityID:         user.CityID,
-		ProvinceID:     user.ProvinceID,
-		CountryID:      user.CountryID,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}
+	var response dto.UserResponse
+	copier.Copy(&response, user)
+	return &response
 }
 
 func generateAuthKey() (string, error) {
