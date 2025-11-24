@@ -31,7 +31,7 @@ func NewUserUsecase(repo repository.UserRepository, hasher security.PasswordHash
 
 func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.UserResponse, error) {
 	// Check if email exists
-	existingUser, err := u.repo.FindByEmail(ctx, req.Email)
+	existingUser, err := u.repo.FindByEmail(req.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check email: %w", err)
 	}
@@ -40,7 +40,7 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 	}
 
 	// Check if username exists
-	existingUser, err = u.repo.FindByUsername(ctx, req.Username)
+	existingUser, err = u.repo.FindByUsername(req.Username)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check username: %w", err)
 	}
@@ -49,7 +49,7 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 	}
 
 	// Check if handphone exists
-	existingUser, err = u.repo.FindByHandphone(ctx, req.Handphone)
+	existingUser, err = u.repo.FindByHandphone(req.Handphone)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check handphone: %w", err)
 	}
@@ -101,7 +101,7 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 		UpdatedBy:         0,
 	}
 
-	if err := u.repo.Create(ctx, user); err != nil {
+	if err := u.repo.Create(user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -109,7 +109,7 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 }
 
 func (u *userUsecaseImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-	user, err := u.repo.FindByUsername(ctx, req.Username)
+	user, err := u.repo.FindByUsername(req.Username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("invalid username or password")
@@ -135,7 +135,7 @@ func (u *userUsecaseImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 }
 
 func (u *userUsecaseImpl) GetByID(ctx context.Context, id uint) (*dto.UserResponse, error) {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
@@ -146,7 +146,7 @@ func (u *userUsecaseImpl) GetByID(ctx context.Context, id uint) (*dto.UserRespon
 }
 
 func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
@@ -194,7 +194,7 @@ func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUs
 	user.UpdatedAt = time.Now()
 	user.UpdatedBy = id
 
-	if err := u.repo.Update(ctx, user); err != nil {
+	if err := u.repo.Update(user); err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
@@ -202,7 +202,7 @@ func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUs
 }
 
 func (u *userUsecaseImpl) Delete(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -211,7 +211,7 @@ func (u *userUsecaseImpl) Delete(ctx context.Context, id uint) error {
 	}
 
 	user.SoftDelete()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.ListUserResponse, error) {
@@ -223,7 +223,7 @@ func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.Li
 	}
 
 	offset := (page - 1) * pageSize
-	users, total, err := u.repo.List(ctx, pageSize, offset)
+	users, total, err := u.repo.List(pageSize, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
@@ -242,7 +242,7 @@ func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.Li
 }
 
 func (u *userUsecaseImpl) Activate(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -251,11 +251,11 @@ func (u *userUsecaseImpl) Activate(ctx context.Context, id uint) error {
 	}
 
 	user.Activate()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) Deactivate(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -264,11 +264,11 @@ func (u *userUsecaseImpl) Deactivate(ctx context.Context, id uint) error {
 	}
 
 	user.Deactivate()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) Suspend(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -277,11 +277,11 @@ func (u *userUsecaseImpl) Suspend(ctx context.Context, id uint) error {
 	}
 
 	user.Suspend()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) VerifyEmail(ctx context.Context, token string) error {
-	user, err := u.repo.FindByVerificationToken(ctx, token)
+	user, err := u.repo.FindByVerificationToken(token)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("invalid verification token")
@@ -290,11 +290,11 @@ func (u *userUsecaseImpl) VerifyEmail(ctx context.Context, token string) error {
 	}
 
 	user.ClearVerificationToken()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) EnableDashboard(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -303,11 +303,11 @@ func (u *userUsecaseImpl) EnableDashboard(ctx context.Context, id uint) error {
 	}
 
 	user.EnableDashboardAccess()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func (u *userUsecaseImpl) DisableDashboard(ctx context.Context, id uint) error {
-	user, err := u.repo.FindByID(ctx, id)
+	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
@@ -316,7 +316,7 @@ func (u *userUsecaseImpl) DisableDashboard(ctx context.Context, id uint) error {
 	}
 
 	user.DisableDashboardAccess()
-	return u.repo.Update(ctx, user)
+	return u.repo.Update(user)
 }
 
 func toUserResponse(user *entity.User) *dto.UserResponse {

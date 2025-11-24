@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"context"
 	"time"
 
 	"github.com/budimanlai/go-core/account/domain/entity"
@@ -19,73 +18,73 @@ func NewUserRepository(db *gorm.DB) repository.UserRepository {
 	return &userRepositoryImpl{db: db}
 }
 
-func (r *userRepositoryImpl) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+func (r *userRepositoryImpl) FindByEmail(email string) (*entity.User, error) {
 	var model models.User
-	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&model).Error; err != nil {
+	if err := r.db.Where("email = ?", email).First(&model).Error; err != nil {
 		return nil, err
 	}
 	return toEntity(&model), nil
 }
 
-func (r *userRepositoryImpl) FindByUsername(ctx context.Context, username string) (*entity.User, error) {
+func (r *userRepositoryImpl) FindByUsername(username string) (*entity.User, error) {
 	var model models.User
-	if err := r.db.WithContext(ctx).Where("username = ?", username).First(&model).Error; err != nil {
+	if err := r.db.Where("username = ?", username).First(&model).Error; err != nil {
 		return nil, err
 	}
 	return toEntity(&model), nil
 }
 
-func (r *userRepositoryImpl) FindByHandphone(ctx context.Context, handphone string) (*entity.User, error) {
+func (r *userRepositoryImpl) FindByHandphone(handphone string) (*entity.User, error) {
 	var model models.User
-	if err := r.db.WithContext(ctx).Where("handphone = ?", handphone).First(&model).Error; err != nil {
+	if err := r.db.Where("handphone = ?", handphone).First(&model).Error; err != nil {
 		return nil, err
 	}
 	return toEntity(&model), nil
 }
 
-func (r *userRepositoryImpl) FindByID(ctx context.Context, id uint) (*entity.User, error) {
+func (r *userRepositoryImpl) FindByID(id uint) (*entity.User, error) {
 	var model models.User
-	if err := r.db.WithContext(ctx).First(&model, id).Error; err != nil {
+	if err := r.db.First(&model, id).Error; err != nil {
 		return nil, err
 	}
 	return toEntity(&model), nil
 }
 
-func (r *userRepositoryImpl) FindByVerificationToken(ctx context.Context, token string) (*entity.User, error) {
+func (r *userRepositoryImpl) FindByVerificationToken(token string) (*entity.User, error) {
 	var model models.User
-	if err := r.db.WithContext(ctx).Where("verification_token = ?", token).First(&model).Error; err != nil {
+	if err := r.db.Where("verification_token = ?", token).First(&model).Error; err != nil {
 		return nil, err
 	}
 	return toEntity(&model), nil
 }
 
-func (r *userRepositoryImpl) Create(ctx context.Context, user *entity.User) error {
+func (r *userRepositoryImpl) Create(user *entity.User) error {
 	model := toModel(user)
-	if err := r.db.WithContext(ctx).Create(&model).Error; err != nil {
+	if err := r.db.Create(&model).Error; err != nil {
 		return err
 	}
 	user.ID = model.ID
 	return nil
 }
 
-func (r *userRepositoryImpl) Update(ctx context.Context, user *entity.User) error {
+func (r *userRepositoryImpl) Update(user *entity.User) error {
 	model := toModel(user)
-	return r.db.WithContext(ctx).Save(&model).Error
+	return r.db.Save(&model).Error
 }
 
-func (r *userRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.User{}, id).Error
+func (r *userRepositoryImpl) Delete(id uint) error {
+	return r.db.Delete(&models.User{}, id).Error
 }
 
-func (r *userRepositoryImpl) List(ctx context.Context, limit, offset int) ([]*entity.User, int64, error) {
+func (r *userRepositoryImpl) List(limit, offset int) ([]*entity.User, int64, error) {
 	var modelList []models.User
 	var total int64
 
-	if err := r.db.WithContext(ctx).Model(&models.User{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&models.User{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := r.db.WithContext(ctx).Limit(limit).Offset(offset).Find(&modelList).Error; err != nil {
+	if err := r.db.Limit(limit).Offset(offset).Find(&modelList).Error; err != nil {
 		return nil, 0, err
 	}
 
