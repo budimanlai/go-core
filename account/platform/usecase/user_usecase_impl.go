@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -30,7 +29,7 @@ func NewUserUsecase(repo repository.UserRepository, hasher security.PasswordHash
 	}
 }
 
-func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.UserResponse, error) {
+func (u *userUsecaseImpl) Register(req *dto.RegisterRequest) (*dto.UserResponse, error) {
 	// Check if email exists
 	existingUser, err := u.repo.FindByEmail(req.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -96,7 +95,7 @@ func (u *userUsecaseImpl) Register(ctx context.Context, req *dto.RegisterRequest
 	return toUserResponse(&user), nil
 }
 
-func (u *userUsecaseImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
+func (u *userUsecaseImpl) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := u.repo.FindByUsername(req.Username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -122,7 +121,7 @@ func (u *userUsecaseImpl) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 	}, nil
 }
 
-func (u *userUsecaseImpl) GetByID(ctx context.Context, id uint) (*dto.UserResponse, error) {
+func (u *userUsecaseImpl) GetByID(id uint) (*dto.UserResponse, error) {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -133,7 +132,7 @@ func (u *userUsecaseImpl) GetByID(ctx context.Context, id uint) (*dto.UserRespon
 	return toUserResponse(user), nil
 }
 
-func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
+func (u *userUsecaseImpl) Update(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -156,7 +155,7 @@ func (u *userUsecaseImpl) Update(ctx context.Context, id uint, req *dto.UpdateUs
 	return toUserResponse(user), nil
 }
 
-func (u *userUsecaseImpl) Delete(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) Delete(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -169,7 +168,7 @@ func (u *userUsecaseImpl) Delete(ctx context.Context, id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.ListUserResponse, error) {
+func (u *userUsecaseImpl) List(page, pageSize int) (*dto.ListUserResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -196,7 +195,7 @@ func (u *userUsecaseImpl) List(ctx context.Context, page, pageSize int) (*dto.Li
 	}, nil
 }
 
-func (u *userUsecaseImpl) Activate(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) Activate(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -209,7 +208,7 @@ func (u *userUsecaseImpl) Activate(ctx context.Context, id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) Deactivate(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) Deactivate(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -222,7 +221,7 @@ func (u *userUsecaseImpl) Deactivate(ctx context.Context, id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) Suspend(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) Suspend(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -235,7 +234,7 @@ func (u *userUsecaseImpl) Suspend(ctx context.Context, id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) VerifyEmail(ctx context.Context, token string) error {
+func (u *userUsecaseImpl) VerifyEmail(token string) error {
 	user, err := u.repo.FindByVerificationToken(token)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -248,7 +247,7 @@ func (u *userUsecaseImpl) VerifyEmail(ctx context.Context, token string) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) EnableDashboard(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) EnableDashboard(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -261,7 +260,7 @@ func (u *userUsecaseImpl) EnableDashboard(ctx context.Context, id uint) error {
 	return u.repo.Update(user)
 }
 
-func (u *userUsecaseImpl) DisableDashboard(ctx context.Context, id uint) error {
+func (u *userUsecaseImpl) DisableDashboard(id uint) error {
 	user, err := u.repo.FindByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

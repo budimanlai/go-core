@@ -7,6 +7,7 @@ import (
 	"github.com/budimanlai/go-core/account/dto"
 
 	"github.com/budimanlai/go-pkg/response"
+	"github.com/budimanlai/go-pkg/validator"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -26,12 +27,15 @@ func (h *UserHandler) Register(c *fiber.Ctx) error {
 		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
-	user, err := h.usecase.Register(c.Context(), &req)
+	if err := validator.ValidateStruct(req); err != nil {
+		return response.ValidationErrorI18n(c, err)
+	}
+
+	user, err := h.usecase.Register(&req)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	c.Status(fiber.StatusCreated)
 	return response.SuccessI18n(c, "app.success", user)
 }
 
@@ -41,7 +45,7 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
-	loginResp, err := h.usecase.Login(c.Context(), &req)
+	loginResp, err := h.usecase.Login(&req)
 	if err != nil {
 		return response.Error(c, fiber.StatusUnauthorized, err.Error())
 	}
@@ -56,7 +60,7 @@ func (h *UserHandler) GetByID(c *fiber.Ctx) error {
 		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
-	user, err := h.usecase.GetByID(c.Context(), uint(id))
+	user, err := h.usecase.GetByID(uint(id))
 	if err != nil {
 		return response.Error(c, fiber.StatusNotFound, err.Error())
 	}
@@ -76,7 +80,7 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
-	user, err := h.usecase.Update(c.Context(), uint(id), &req)
+	user, err := h.usecase.Update(uint(id), &req)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
@@ -91,7 +95,7 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 		return response.BadRequestI18n(c, "app.invalid_request_body", nil)
 	}
 
-	if err := h.usecase.Delete(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.Delete(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -109,7 +113,7 @@ func (h *UserHandler) List(c *fiber.Ctx) error {
 		pageSize = 10
 	}
 
-	listResp, err := h.usecase.List(c.Context(), page, pageSize)
+	listResp, err := h.usecase.List(page, pageSize)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, err.Error())
 	}
@@ -124,7 +128,7 @@ func (h *UserHandler) Activate(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.Activate(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.Activate(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -138,7 +142,7 @@ func (h *UserHandler) Deactivate(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.Deactivate(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.Deactivate(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -152,7 +156,7 @@ func (h *UserHandler) Suspend(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.Suspend(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.Suspend(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -165,7 +169,7 @@ func (h *UserHandler) VerifyEmail(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Verification token is required")
 	}
 
-	if err := h.usecase.VerifyEmail(c.Context(), token); err != nil {
+	if err := h.usecase.VerifyEmail(token); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -179,7 +183,7 @@ func (h *UserHandler) EnableDashboard(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.EnableDashboard(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.EnableDashboard(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
@@ -193,7 +197,7 @@ func (h *UserHandler) DisableDashboard(c *fiber.Ctx) error {
 		return response.BadRequest(c, "Invalid ID")
 	}
 
-	if err := h.usecase.DisableDashboard(c.Context(), uint(id)); err != nil {
+	if err := h.usecase.DisableDashboard(uint(id)); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 

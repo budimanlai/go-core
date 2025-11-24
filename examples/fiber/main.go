@@ -8,6 +8,8 @@ import (
 	userRepository "github.com/budimanlai/go-core/account/platform/repository"
 	userSecurity "github.com/budimanlai/go-core/account/platform/security"
 	userUsecase "github.com/budimanlai/go-core/account/platform/usecase"
+	pkg_databases "github.com/budimanlai/go-pkg/databases"
+
 	"github.com/budimanlai/go-core/config"
 	"github.com/budimanlai/go-core/middleware/auth"
 	"github.com/budimanlai/go-core/middleware/cors"
@@ -16,21 +18,28 @@ import (
 	"github.com/budimanlai/go-core/middleware/recovery"
 	"github.com/budimanlai/go-pkg/logger"
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 	logger.Printf("Starting application...")
 
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	dbConfig := pkg_databases.DbConfig{
+		Driver:   pkg_databases.MySQL,
+		Host:     cfg.DBHost,
+		Port:     cfg.DBPort,
+		Username: cfg.DBUser,
+		Password: cfg.DBPassword,
+		Name:     cfg.DBName,
 	}
+
+	dbManager := pkg_databases.NewDbManager(dbConfig)
+	err := dbManager.Open()
+	if err != nil {
+		logger.Fatalf("Failed to connect to database: %v", err)
+	}
+	db := dbManager.GetDb()
+
 	logger.Printf("Database connected successfully")
 
 	passwordHasher := userSecurity.NewBcryptHasher()
