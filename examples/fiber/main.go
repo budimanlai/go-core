@@ -9,6 +9,9 @@ import (
 	userSecurity "github.com/budimanlai/go-core/account/platform/security"
 	userUsecase "github.com/budimanlai/go-core/account/platform/usecase"
 	customUC "github.com/budimanlai/go-core/examples/fiber/usecase"
+	regionHTTP "github.com/budimanlai/go-core/region/platform/http"
+	regionRepository "github.com/budimanlai/go-core/region/platform/repository"
+	regionUsecase "github.com/budimanlai/go-core/region/platform/usecase"
 	pkg_databases "github.com/budimanlai/go-pkg/databases"
 
 	"github.com/budimanlai/go-core/config"
@@ -39,6 +42,8 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
+	defer dbManager.Close()
+
 	db := dbManager.GetDb()
 
 	logger.Printf("Database connected successfully")
@@ -58,6 +63,21 @@ func main() {
 
 	userHTTPHandler := userHTTP.NewUserHandler(userUC)
 	customUserHTTPHandler := userHTTP.NewUserHandler(customUserUC)
+
+	// Region module setup
+	countryRepo := regionRepository.NewCountryRepository(db)
+	provinceRepo := regionRepository.NewProvinceRepository(db)
+	cityRepo := regionRepository.NewCityRepository(db)
+	districtRepo := regionRepository.NewDistrictRepository(db)
+	subdistrictRepo := regionRepository.NewSubDistrictRepository(db)
+
+	countryUC := regionUsecase.NewCountryUsecase(countryRepo)
+	provinceUC := regionUsecase.NewProvinceUsecase(provinceRepo)
+	cityUC := regionUsecase.NewCityUsecase(cityRepo)
+	districtUC := regionUsecase.NewDistrictUsecase(districtRepo)
+	subdistrictUC := regionUsecase.NewSubDistrictUsecase(subdistrictRepo)
+
+	regionHandler := regionHTTP.NewRegionHandler(countryUC, provinceUC, cityUC, districtUC, subdistrictUC)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "Go Core Example",
@@ -107,6 +127,17 @@ func main() {
 	protected.Post("/:id/suspend", userHTTPHandler.Suspend)
 	protected.Post("/:id/dashboard/enable", userHTTPHandler.EnableDashboard)
 	protected.Post("/:id/dashboard/disable", userHTTPHandler.DisableDashboard)
+
+	// Region endpoints (public)
+	regions := api.Group("/regions")
+	regions.Get("/countries", regionHandler.GetCountries)
+	regions.Get("/countries/:code", regionHandler.GetCountryByCode)
+	regions.Get("/provinces", regionHandler.GetProvinces)
+	regions.Get("/cities", regionHandler.GetCitiesByProvince)
+	regions.Get("/cities/:id", regionHandler.GetCityByID)
+	regions.Get("/districts", regionHandler.GetDistrictsByCity)
+	regions.Get("/districts/:id", regionHandler.GetDistrictByID)
+	regions.Get("/subdistricts", regionHandler.GetSubDistrictsByDistrict)
 
 	addr := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)
 	logger.Infof("Server starting on %s", addr)
