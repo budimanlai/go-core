@@ -2,6 +2,8 @@ module github.com/budimanlai/go-core
 
 go 1.25.1
 
+replace github.com/budimanlai/go-pkg => /Users/budiman/Documents/development/my_github/go-pkg
+
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -48,7 +50,7 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/budimanlai/go-pkg v1.0.3
+	github.com/budimanlai/go-pkg v1.0.4
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
