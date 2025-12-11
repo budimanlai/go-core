@@ -135,7 +135,6 @@ func (r *prometheusRepository[E, M]) Count(ctx context.Context, scopes ...func(*
 // -----------------------------------------------------------
 // 4. Helper Recorder
 // -----------------------------------------------------------
-
 func (r *prometheusRepository[E, M]) record(operation string, duration time.Duration, err error) {
 	status := "success"
 	if err != nil {
