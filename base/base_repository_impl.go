@@ -5,11 +5,12 @@ import (
 	"errors"
 	"math"
 
+	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
 // Implementasi Struct
-type BaseRepositoryImpl[T any] struct {
+type BaseRepositoryImpl[E any, M any] struct {
 	db *gorm.DB
 }
 
@@ -27,14 +28,14 @@ func ExtractTx(ctx context.Context) *gorm.DB {
 }
 
 // Constructor Public
-func NewGormRepository[T any](db *gorm.DB) BaseRepository[T] {
-	return &BaseRepositoryImpl[T]{
+func NewGormRepository[E any, M any](db *gorm.DB) BaseRepository[E, M] {
+	return &BaseRepositoryImpl[E, M]{
 		db: db,
 	}
 }
 
 // Helper internal untuk memilih DB mana yang dipakai
-func (r *BaseRepositoryImpl[T]) getDB(ctx context.Context) *gorm.DB {
+func (r *BaseRepositoryImpl[E, M]) getDB(ctx context.Context) *gorm.DB {
 	// 1. Cek apakah ada Transaksi "titipan" di context?
 	tx := ExtractTx(ctx)
 	if tx != nil {
@@ -46,12 +47,25 @@ func (r *BaseRepositoryImpl[T]) getDB(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx)
 }
 
-func (r *BaseRepositoryImpl[T]) Create(ctx context.Context, entity *T) error {
-	return r.getDB(ctx).Create(entity).Error
+func (r *BaseRepositoryImpl[E, M]) Create(ctx context.Context, entity *E) error {
+	var model M
+	if err := copier.Copy(&model, entity); err != nil {
+		return err
+	}
+
+	if err := r.getDB(ctx).Create(&model).Error; err != nil {
+		return err
+	}
+
+	if err := copier.Copy(entity, &model); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *BaseRepositoryImpl[T]) FindByID(ctx context.Context, id any, scopes ...func(*gorm.DB) *gorm.DB) (*T, error) {
-	var entity T
+func (r *BaseRepositoryImpl[E, M]) FindByID(ctx context.Context, id any, scopes ...func(*gorm.DB) *gorm.DB) (*E, error) {
+	var model M
 
 	// 1. Ambil DB dasar
 	db := r.getDB(ctx)
@@ -62,32 +76,42 @@ func (r *BaseRepositoryImpl[T]) FindByID(ctx context.Context, id any, scopes ...
 	}
 
 	// 3. Eksekusi
-	err := db.First(&entity, id).Error
+	err := db.First(&model, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+
+	var entity E
+	if err := copier.Copy(&entity, &model); err != nil {
+		return nil, err
+	}
+
 	return &entity, nil
 }
 
-func (r *BaseRepositoryImpl[T]) UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error {
-	return r.getDB(ctx).Model(new(T)).Where("id = ?", id).Updates(fields).Error
+func (r *BaseRepositoryImpl[E, M]) UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error {
+	return r.getDB(ctx).Model(new(M)).Where("id = ?", id).Updates(fields).Error
 }
 
-func (r *BaseRepositoryImpl[T]) Update(ctx context.Context, entity *T) error {
-	return r.getDB(ctx).Updates(entity).Error
+func (r *BaseRepositoryImpl[E, M]) Update(ctx context.Context, entity *E) error {
+	var model M
+	if err := copier.Copy(&model, entity); err != nil {
+		return err
+	}
+	return r.getDB(ctx).Save(&model).Error
 }
 
-func (r *BaseRepositoryImpl[T]) Delete(ctx context.Context, id any) error {
-	var entity T
-	return r.getDB(ctx).Delete(&entity, id).Error
+func (r *BaseRepositoryImpl[E, M]) Delete(ctx context.Context, id any) error {
+	var model M
+	return r.getDB(ctx).Delete(&model, id).Error
 }
 
 // 5. LIST with Pagination
-func (r *BaseRepositoryImpl[T]) FindAll(ctx context.Context, page, limit int, scopes ...func(*gorm.DB) *gorm.DB) (PaginationResult[T], error) {
-	var entities []T
+func (r *BaseRepositoryImpl[E, M]) FindAll(ctx context.Context, page, limit int, scopes ...func(*gorm.DB) *gorm.DB) (PaginationResult[E], error) {
+	var models []M
 	var total int64
 
 	// Default value safety
@@ -102,7 +126,7 @@ func (r *BaseRepositoryImpl[T]) FindAll(ctx context.Context, page, limit int, sc
 	}
 
 	// Mulai build query
-	db := r.getDB(ctx).Model(new(T))
+	db := r.getDB(ctx).Model(new(M))
 
 	// Apply Filter Dinamis (Scopes) SEBELUM count
 	for _, scope := range scopes {
@@ -113,21 +137,27 @@ func (r *BaseRepositoryImpl[T]) FindAll(ctx context.Context, page, limit int, sc
 		Limit(-1).
 		Offset(-1).
 		Count(&total).Error; err != nil {
-		return PaginationResult[T]{}, err
+		return PaginationResult[E]{}, err
 	}
 
 	// Pagination Offset
 	offset := (page - 1) * limit
 
 	// Ambil Data
-	if err := db.Offset(offset).Limit(limit).Find(&entities).Error; err != nil {
-		return PaginationResult[T]{}, err
+	if err := db.Offset(offset).Limit(limit).Find(&models).Error; err != nil {
+		return PaginationResult[E]{}, err
+	}
+
+	var entities []E
+	// Copier pintar, dia bisa copy slice ke slice otomatis
+	if err := copier.Copy(&entities, &models); err != nil {
+		return PaginationResult[E]{}, err
 	}
 
 	// Hitung Total Page
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	return PaginationResult[T]{
+	return PaginationResult[E]{
 		Data:      entities,
 		Total:     total,
 		TotalPage: totalPage,
@@ -136,20 +166,20 @@ func (r *BaseRepositoryImpl[T]) FindAll(ctx context.Context, page, limit int, sc
 	}, nil
 }
 
-func (r *BaseRepositoryImpl[T]) Restore(ctx context.Context, id any) error {
-	var entity T
-	return r.getDB(ctx).Unscoped().Model(&entity).
+func (r *BaseRepositoryImpl[E, M]) Restore(ctx context.Context, id any) error {
+	var models M
+	return r.getDB(ctx).Unscoped().Model(&models).
 		Where("id = ?", id).Update("deleted_at", nil).Error
 }
 
-func (r *BaseRepositoryImpl[T]) ForceDelete(ctx context.Context, id any) error {
-	var entity T
-	return r.getDB(ctx).Unscoped().Delete(&entity, id).Error
+func (r *BaseRepositoryImpl[E, M]) ForceDelete(ctx context.Context, id any) error {
+	var models M
+	return r.getDB(ctx).Unscoped().Delete(&models, id).Error
 }
 
 // FindOne: Find single entity by any condition using scopes
-func (r *BaseRepositoryImpl[T]) FindOne(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (*T, error) {
-	var entity T
+func (r *BaseRepositoryImpl[E, M]) FindOne(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (*E, error) {
+	var models M
 
 	// Build query
 	db := r.getDB(ctx)
@@ -160,44 +190,65 @@ func (r *BaseRepositoryImpl[T]) FindOne(ctx context.Context, scopes ...func(*gor
 	}
 
 	// Execute
-	err := db.First(&entity).Error
+	err := db.First(&models).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &entity, nil
+
+	var entities E
+	// Copier pintar, dia bisa copy slice ke slice otomatis
+	if err := copier.Copy(&entities, &models); err != nil {
+		return nil, err
+	}
+	return &entities, nil
 }
 
 // CreateBatch: Bulk insert entities (efficient batch processing)
-func (r *BaseRepositoryImpl[T]) CreateBatch(ctx context.Context, entities []*T) error {
+func (r *BaseRepositoryImpl[E, M]) CreateBatch(ctx context.Context, entities []*E) error {
 	if len(entities) == 0 {
 		return nil
 	}
 
+	// Convert entities to models
+	var models []M
+	if err := copier.Copy(&models, &entities); err != nil {
+		return err
+	}
+
 	// GORM's CreateInBatches automatically handles chunking
 	// Default batch size: 100 records per INSERT
-	return r.getDB(ctx).CreateInBatches(entities, 100).Error
+	if err := r.getDB(ctx).CreateInBatches(&models, 100).Error; err != nil {
+		return err
+	}
+
+	// Copy back IDs to entities
+	if err := copier.Copy(&entities, &models); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteBatch: Delete multiple entities by IDs
-func (r *BaseRepositoryImpl[T]) DeleteBatch(ctx context.Context, ids []any) error {
+func (r *BaseRepositoryImpl[E, M]) DeleteBatch(ctx context.Context, ids []any) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	var entity T
+	var model M
 	// DELETE FROM table WHERE id IN (?, ?, ?)
-	return r.getDB(ctx).Delete(&entity, ids).Error
+	return r.getDB(ctx).Delete(&model, ids).Error
 }
 
 // Count: Count entities with optional filters
-func (r *BaseRepositoryImpl[T]) Count(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (int64, error) {
+func (r *BaseRepositoryImpl[E, M]) Count(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (int64, error) {
 	var count int64
 
 	// Build query
-	db := r.getDB(ctx).Model(new(T))
+	db := r.getDB(ctx).Model(new(M))
 
 	// Apply scopes (filters)
 	for _, scope := range scopes {

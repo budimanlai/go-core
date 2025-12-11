@@ -4,24 +4,46 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-type cachedRepository[T any] struct {
-	next BaseRepository[T]
+type cachedRepository[E any, M any] struct {
+	next BaseRepository[E, M]
 	rdb  *redis.Client
 	ttl  time.Duration
 }
 
-func (r *cachedRepository[T]) getKey(id any) string {
-	return fmt.Sprintf("cache:entity:%T:%v", *new(T), id)
+func (r *cachedRepository[E, M]) getKey(id any) string {
+	return fmt.Sprintf("cache:entity:%T:%v", *new(E), id)
+}
+
+// Helper untuk mengambil ID dari Generic Struct menggunakan Reflection
+func (r *cachedRepository[E, M]) getIDFromEntity(entity any) (any, bool) {
+	val := reflect.ValueOf(entity)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	if val.Kind() != reflect.Struct {
+		return nil, false
+	}
+
+	// Cari field bernama "ID", "Id", atau "UID"
+	possibleNames := []string{"ID", "Id", "UID"}
+	for _, name := range possibleNames {
+		field := val.FieldByName(name)
+		if field.IsValid() && !field.IsZero() {
+			return field.Interface(), true
+		}
+	}
+	return nil, false
 }
 
 // PERBAIKAN: Tambahkan parameter scopes ...func
-func (r *cachedRepository[T]) FindByID(ctx context.Context, id any, scopes ...func(*gorm.DB) *gorm.DB) (*T, error) {
+func (r *cachedRepository[E, M]) FindByID(ctx context.Context, id any, scopes ...func(*gorm.DB) *gorm.DB) (*E, error) {
 	// 1. SAFETY CHECK: Jika ada scopes (filter/preload), JANGAN pakai cache.
 	// Karena cache key kita cuma based on ID.
 	// Nanti bahaya kalau data preload tercampur dengan data polos.
@@ -34,7 +56,7 @@ func (r *cachedRepository[T]) FindByID(ctx context.Context, id any, scopes ...fu
 	val, err := r.rdb.Get(ctx, key).Result()
 
 	if err == nil {
-		var entity T
+		var entity E
 		if err := json.Unmarshal([]byte(val), &entity); err == nil {
 			return &entity, nil
 		}
@@ -58,11 +80,11 @@ func (r *cachedRepository[T]) FindByID(ctx context.Context, id any, scopes ...fu
 }
 
 // Method lain tetap sama (Pastikan signature-nya match interface)
-func (r *cachedRepository[T]) Create(ctx context.Context, entity *T) error {
+func (r *cachedRepository[E, M]) Create(ctx context.Context, entity *E) error {
 	return r.next.Create(ctx, entity)
 }
 
-func (r *cachedRepository[T]) UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error {
+func (r *cachedRepository[E, M]) UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error {
 	if err := r.next.UpdateFields(ctx, id, fields); err != nil {
 		return err
 	}
@@ -70,15 +92,19 @@ func (r *cachedRepository[T]) UpdateFields(ctx context.Context, id any, fields m
 	return nil
 }
 
-func (r *cachedRepository[T]) Update(ctx context.Context, entity *T) error {
+func (r *cachedRepository[E, M]) Update(ctx context.Context, entity *E) error {
 	if err := r.next.Update(ctx, entity); err != nil {
 		return err
 	}
-	// Hapus cache (Best effort, asumsi logic hapus cache di handle service atau expired TTL)
+
+	if id, ok := r.getIDFromEntity(entity); ok {
+		// Jika ketemu ID-nya, hapus cache!
+		r.rdb.Del(context.Background(), r.getKey(id))
+	}
 	return nil
 }
 
-func (r *cachedRepository[T]) Delete(ctx context.Context, id any) error {
+func (r *cachedRepository[E, M]) Delete(ctx context.Context, id any) error {
 	if err := r.next.Delete(ctx, id); err != nil {
 		return err
 	}
@@ -86,11 +112,11 @@ func (r *cachedRepository[T]) Delete(ctx context.Context, id any) error {
 	return nil
 }
 
-func (r *cachedRepository[T]) FindAll(ctx context.Context, page, limit int, scopes ...func(*gorm.DB) *gorm.DB) (PaginationResult[T], error) {
+func (r *cachedRepository[E, M]) FindAll(ctx context.Context, page, limit int, scopes ...func(*gorm.DB) *gorm.DB) (PaginationResult[E], error) {
 	return r.next.FindAll(ctx, page, limit, scopes...)
 }
 
-func (r *cachedRepository[T]) Restore(ctx context.Context, id any) error {
+func (r *cachedRepository[E, M]) Restore(ctx context.Context, id any) error {
 	if err := r.next.Restore(ctx, id); err != nil {
 		return err
 	}
@@ -98,7 +124,7 @@ func (r *cachedRepository[T]) Restore(ctx context.Context, id any) error {
 	return nil
 }
 
-func (r *cachedRepository[T]) ForceDelete(ctx context.Context, id any) error {
+func (r *cachedRepository[E, M]) ForceDelete(ctx context.Context, id any) error {
 	if err := r.next.ForceDelete(ctx, id); err != nil {
 		return err
 	}
@@ -106,16 +132,16 @@ func (r *cachedRepository[T]) ForceDelete(ctx context.Context, id any) error {
 	return nil
 }
 
-func (r *cachedRepository[T]) FindOne(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (*T, error) {
+func (r *cachedRepository[E, M]) FindOne(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (*E, error) {
 	// No caching for FindOne (complex filters)
 	return r.next.FindOne(ctx, scopes...)
 }
 
-func (r *cachedRepository[T]) CreateBatch(ctx context.Context, entities []*T) error {
+func (r *cachedRepository[E, M]) CreateBatch(ctx context.Context, entities []*E) error {
 	return r.next.CreateBatch(ctx, entities)
 }
 
-func (r *cachedRepository[T]) DeleteBatch(ctx context.Context, ids []any) error {
+func (r *cachedRepository[E, M]) DeleteBatch(ctx context.Context, ids []any) error {
 	if err := r.next.DeleteBatch(ctx, ids); err != nil {
 		return err
 	}
@@ -137,7 +163,7 @@ func (r *cachedRepository[T]) DeleteBatch(ctx context.Context, ids []any) error 
 	return nil
 }
 
-func (r *cachedRepository[T]) Count(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (int64, error) {
+func (r *cachedRepository[E, M]) Count(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) (int64, error) {
 	// No caching for count (filters may vary)
 	return r.next.Count(ctx, scopes...)
 }

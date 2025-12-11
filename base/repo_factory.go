@@ -27,15 +27,15 @@ func NewFactory(db *gorm.DB, cfg RepoConfig) *Factory {
 	}
 }
 
-func NewRepository[T any](f *Factory) BaseRepository[T] {
+func NewRepository[E any, M any](f *Factory) BaseRepository[E, M] {
 
 	// 1. Layer Inti: Database (Gorm)
 	// Akses f.DB (karena f sekarang parameter)
-	var repo BaseRepository[T] = NewGormRepository[T](f.DB)
+	var repo BaseRepository[E, M] = NewGormRepository[E, M](f.DB)
 
 	// 2. Layer Wrapper: Redis (Jika enabled)
 	if f.config.EnableCache && f.config.RedisClient != nil {
-		repo = &cachedRepository[T]{
+		repo = &cachedRepository[E, M]{
 			next: repo,
 			rdb:  f.config.RedisClient,
 			ttl:  10 * time.Minute, // Default TTL
@@ -44,9 +44,9 @@ func NewRepository[T any](f *Factory) BaseRepository[T] {
 
 	// 3. Layer Wrapper: Prometheus (Jika enabled)
 	if f.config.EnablePrometheus {
-		repo = &prometheusRepository[T]{
+		repo = &prometheusRepository[E, M]{
 			next: repo,
-			name: fmt.Sprintf("%T", *new(T)),
+			name: fmt.Sprintf("%T", *new(E)),
 		}
 	}
 
