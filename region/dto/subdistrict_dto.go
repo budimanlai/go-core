@@ -1,10 +1,15 @@
 package dto
 
-type SubDistrictResponse struct {
-	SubdisID   uint   `json:"subdis_id"`
-	SubdisName string `json:"subdis_name"`
+import ()
+
+type CreateSubdistrictReq struct {
+	SubdisId   int     `json:"subdis_id" validate:"omitempty"`
+	SubdisName *string `json:"subdis_name" validate:"omitempty"`
+	DisId      int     `json:"dis_id" validate:"required"`
 }
 
-type SubDistrictRequest struct {
-	DisID uint `json:"dis_id" validate:"required"`
+type UpdateSubdistrictReq struct {
+	SubdisId   int     `json:"subdis_id"`
+	SubdisName *string `json:"subdis_name"`
+	DisId      int     `json:"dis_id"`
 }

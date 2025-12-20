@@ -1,10 +1,15 @@
 package dto
 
-type CityResponse struct {
-	CityID   uint   `json:"city_id"`
-	CityName string `json:"city_name"`
+import ()
+
+type CreateCityReq struct {
+	CityId   int     `json:"city_id" validate:"omitempty"`
+	CityName *string `json:"city_name" validate:"omitempty"`
+	ProvId   int     `json:"prov_id" validate:"required"`
 }
 
-type CityRequest struct {
-	ProvinceID uint `json:"prov_id" validate:"required"`
+type UpdateCityReq struct {
+	CityId   int     `json:"city_id"`
+	CityName *string `json:"city_name"`
+	ProvId   int     `json:"prov_id"`
 }
