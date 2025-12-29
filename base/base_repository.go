@@ -18,6 +18,8 @@ type PaginationResult[T any] struct {
 }
 
 type BaseRepository[E any, M any] interface {
+	GetDB(ctx context.Context) *gorm.DB
+
 	Create(ctx context.Context, entity *E) error
 	Update(ctx context.Context, entity *E) error
 	UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error

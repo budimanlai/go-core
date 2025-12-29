@@ -6,6 +6,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type JWTMiddleware struct {
+	JwtService JWTService
+}
+
 func FiberJWTMiddleware(jwtService JWTService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
@@ -31,9 +35,7 @@ func FiberJWTMiddleware(jwtService JWTService) fiber.Handler {
 			})
 		}
 
-		c.Locals("user_id", claims.UserID)
-		c.Locals("email", claims.Email)
-		c.Locals("role", claims.Role)
+		c.Locals("user_token", claims.UserToken)
 		c.Locals("claims", claims)
 
 		return c.Next()

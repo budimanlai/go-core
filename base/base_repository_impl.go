@@ -35,7 +35,7 @@ func NewGormRepository[E any, M any](db *gorm.DB) BaseRepository[E, M] {
 }
 
 // Helper internal untuk memilih DB mana yang dipakai
-func (r *BaseRepositoryImpl[E, M]) getDB(ctx context.Context) *gorm.DB {
+func (r *BaseRepositoryImpl[E, M]) GetDB(ctx context.Context) *gorm.DB {
 	// 1. Cek apakah ada Transaksi "titipan" di context?
 	tx := ExtractTx(ctx)
 	if tx != nil {
@@ -53,7 +53,7 @@ func (r *BaseRepositoryImpl[E, M]) Create(ctx context.Context, entity *E) error 
 		return err
 	}
 
-	if err := r.getDB(ctx).Create(&model).Error; err != nil {
+	if err := r.GetDB(ctx).Create(&model).Error; err != nil {
 		return err
 	}
 
@@ -68,7 +68,7 @@ func (r *BaseRepositoryImpl[E, M]) FindByID(ctx context.Context, id any, scopes 
 	var model M
 
 	// 1. Ambil DB dasar
-	db := r.getDB(ctx)
+	db := r.GetDB(ctx)
 
 	// 2. Apply Scopes (misal: Preload("Profile"))
 	for _, scope := range scopes {
@@ -93,7 +93,7 @@ func (r *BaseRepositoryImpl[E, M]) FindByID(ctx context.Context, id any, scopes 
 }
 
 func (r *BaseRepositoryImpl[E, M]) UpdateFields(ctx context.Context, id any, fields map[string]interface{}) error {
-	return r.getDB(ctx).Model(new(M)).Where("id = ?", id).Updates(fields).Error
+	return r.GetDB(ctx).Model(new(M)).Where("id = ?", id).Updates(fields).Error
 }
 
 func (r *BaseRepositoryImpl[E, M]) Update(ctx context.Context, entity *E) error {
@@ -101,12 +101,12 @@ func (r *BaseRepositoryImpl[E, M]) Update(ctx context.Context, entity *E) error 
 	if err := copier.Copy(&model, entity); err != nil {
 		return err
 	}
-	return r.getDB(ctx).Save(&model).Error
+	return r.GetDB(ctx).Save(&model).Error
 }
 
 func (r *BaseRepositoryImpl[E, M]) Delete(ctx context.Context, id any) error {
 	var model M
-	return r.getDB(ctx).Delete(&model, id).Error
+	return r.GetDB(ctx).Delete(&model, id).Error
 }
 
 // 5. LIST with Pagination
@@ -126,7 +126,7 @@ func (r *BaseRepositoryImpl[E, M]) FindAll(ctx context.Context, page, limit int,
 	}
 
 	// Mulai build query
-	db := r.getDB(ctx).Model(new(M))
+	db := r.GetDB(ctx).Model(new(M))
 
 	// Apply Filter Dinamis (Scopes) SEBELUM count
 	for _, scope := range scopes {
@@ -168,13 +168,13 @@ func (r *BaseRepositoryImpl[E, M]) FindAll(ctx context.Context, page, limit int,
 
 func (r *BaseRepositoryImpl[E, M]) Restore(ctx context.Context, id any) error {
 	var models M
-	return r.getDB(ctx).Unscoped().Model(&models).
+	return r.GetDB(ctx).Unscoped().Model(&models).
 		Where("id = ?", id).Update("deleted_at", nil).Error
 }
 
 func (r *BaseRepositoryImpl[E, M]) ForceDelete(ctx context.Context, id any) error {
 	var models M
-	return r.getDB(ctx).Unscoped().Delete(&models, id).Error
+	return r.GetDB(ctx).Unscoped().Delete(&models, id).Error
 }
 
 // FindOne: Find single entity by any condition using scopes
@@ -182,7 +182,7 @@ func (r *BaseRepositoryImpl[E, M]) FindOne(ctx context.Context, scopes ...func(*
 	var models M
 
 	// Build query
-	db := r.getDB(ctx)
+	db := r.GetDB(ctx)
 
 	// Apply scopes (e.g., Where conditions, Preload, etc.)
 	for _, scope := range scopes {
@@ -220,7 +220,7 @@ func (r *BaseRepositoryImpl[E, M]) CreateBatch(ctx context.Context, entities []*
 
 	// GORM's CreateInBatches automatically handles chunking
 	// Default batch size: 100 records per INSERT
-	if err := r.getDB(ctx).CreateInBatches(&models, 100).Error; err != nil {
+	if err := r.GetDB(ctx).CreateInBatches(&models, 100).Error; err != nil {
 		return err
 	}
 
@@ -240,7 +240,7 @@ func (r *BaseRepositoryImpl[E, M]) DeleteBatch(ctx context.Context, ids []any) e
 
 	var model M
 	// DELETE FROM table WHERE id IN (?, ?, ?)
-	return r.getDB(ctx).Delete(&model, ids).Error
+	return r.GetDB(ctx).Delete(&model, ids).Error
 }
 
 // Count: Count entities with optional filters
@@ -248,7 +248,7 @@ func (r *BaseRepositoryImpl[E, M]) Count(ctx context.Context, scopes ...func(*go
 	var count int64
 
 	// Build query
-	db := r.getDB(ctx).Model(new(M))
+	db := r.GetDB(ctx).Model(new(M))
 
 	// Apply scopes (filters)
 	for _, scope := range scopes {

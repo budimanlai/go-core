@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
+	"gorm.io/gorm"
 
 	"github.com/budimanlai/go-core/region/domain/entity"
 	"github.com/budimanlai/go-core/region/dto"
@@ -37,8 +38,14 @@ func NewCityHandler(service service.CityService) *CityHandler {
 func (h *CityHandler) Index(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	prov_id, _ := strconv.Atoi(c.Query("province_id", "0"))
 
-	result, err := h.service.FindAll(c.Context(), page, limit)
+	result, err := h.service.FindAll(c.Context(), page, limit, func(d *gorm.DB) *gorm.DB {
+		if prov_id > 0 {
+			return d.Where("prov_id = ?", prov_id)
+		}
+		return d
+	})
 	if err != nil {
 		return response.ErrorI18n(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}

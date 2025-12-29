@@ -29,9 +29,9 @@ type DomainRepository[E any] interface {
 }
 
 // -------------------------------------------------------------
-// 2. Base Service Interface (The Standard Contract)
+// 2. Base Usecase Interface (The Standard Contract)
 // -------------------------------------------------------------
-type BaseService[E any] interface {
+type BaseUsecase[E any] interface {
 	// Standard CRUD
 	Create(ctx context.Context, entity *E) error
 	Update(ctx context.Context, entity *E) error

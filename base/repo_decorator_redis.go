@@ -42,6 +42,10 @@ func (r *cachedRepository[E, M]) getIDFromEntity(entity any) (any, bool) {
 	return nil, false
 }
 
+func (r *cachedRepository[E, M]) GetDB(ctx context.Context) *gorm.DB {
+	return r.next.GetDB(ctx)
+}
+
 // PERBAIKAN: Tambahkan parameter scopes ...func
 func (r *cachedRepository[E, M]) FindByID(ctx context.Context, id any, scopes ...func(*gorm.DB) *gorm.DB) (*E, error) {
 	// 1. SAFETY CHECK: Jika ada scopes (filter/preload), JANGAN pakai cache.

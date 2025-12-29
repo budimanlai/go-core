@@ -8,17 +8,17 @@ import (
 )
 
 type DistrictService interface {
-	base.BaseService[entity.District]
+	base.BaseUsecase[entity.District]
 }
 
 type districtServiceImpl struct {
-	base.BaseService[entity.District]
+	base.BaseUsecase[entity.District]
 	repo repository.DistrictRepository
 }
 
 func NewDistrictService(repo repository.DistrictRepository, db *gorm.DB) DistrictService {
 	return &districtServiceImpl{
-		BaseService: base.NewBaseService(repo, db),
+		BaseUsecase: base.NewBaseUsecase(repo, db),
 		repo:        repo,
 	}
 }

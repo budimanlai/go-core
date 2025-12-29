@@ -8,17 +8,17 @@ import (
 )
 
 type ProvinceService interface {
-	base.BaseService[entity.Province]
+	base.BaseUsecase[entity.Province]
 }
 
 type provinceServiceImpl struct {
-	base.BaseService[entity.Province]
+	base.BaseUsecase[entity.Province]
 	repo repository.ProvinceRepository
 }
 
 func NewProvinceService(repo repository.ProvinceRepository, db *gorm.DB) ProvinceService {
 	return &provinceServiceImpl{
-		BaseService: base.NewBaseService(repo, db),
+		BaseUsecase: base.NewBaseUsecase(repo, db),
 		repo:        repo,
 	}
 }

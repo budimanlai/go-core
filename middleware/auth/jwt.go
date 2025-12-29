@@ -19,14 +19,12 @@ type JWTConfig struct {
 }
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserToken string `json:"session"`
 	jwt.RegisteredClaims
 }
 
 type JWTService interface {
-	GenerateToken(userID, email, role string) (string, error)
+	GenerateToken(userToken string) (string, error)
 	ValidateToken(tokenString string) (*Claims, error)
 	RefreshToken(tokenString string) (string, error)
 }
@@ -41,13 +39,11 @@ func NewJWTService(config JWTConfig) JWTService {
 	}
 }
 
-func (s *jwtService) GenerateToken(userID, email, role string) (string, error) {
+func (s *jwtService) GenerateToken(userToken string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(s.config.ExpirationHours) * time.Hour)
 
 	claims := &Claims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserToken: userToken,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -91,5 +87,5 @@ func (s *jwtService) RefreshToken(tokenString string) (string, error) {
 		}
 	}
 
-	return s.GenerateToken(claims.UserID, claims.Email, claims.Role)
+	return s.GenerateToken(claims.UserToken)
 }

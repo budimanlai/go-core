@@ -8,17 +8,17 @@ import (
 )
 
 type CountryinfoService interface {
-	base.BaseService[entity.Countryinfo]
+	base.BaseUsecase[entity.Countryinfo]
 }
 
 type countryinfoServiceImpl struct {
-	base.BaseService[entity.Countryinfo]
+	base.BaseUsecase[entity.Countryinfo]
 	repo repository.CountryinfoRepository
 }
 
 func NewCountryinfoService(repo repository.CountryinfoRepository, db *gorm.DB) CountryinfoService {
 	return &countryinfoServiceImpl{
-		BaseService: base.NewBaseService(repo, db),
+		BaseUsecase: base.NewBaseUsecase(repo, db),
 		repo:        repo,
 	}
 }

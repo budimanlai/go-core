@@ -47,6 +47,10 @@ type prometheusRepository[E any, M any] struct {
 // 3. Implementasi Interface BaseRepository
 // -----------------------------------------------------------
 
+func (r *prometheusRepository[E, M]) GetDB(ctx context.Context) *gorm.DB {
+	return r.next.GetDB(ctx)
+}
+
 func (r *prometheusRepository[E, M]) Create(ctx context.Context, entity *E) error {
 	start := time.Now()
 	err := r.next.Create(ctx, entity)

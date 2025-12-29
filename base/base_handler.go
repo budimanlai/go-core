@@ -12,10 +12,10 @@ import (
 // BaseHandler menangani CRUD HTTP standar
 // E = Entity, C = Create DTO, U = Update DTO
 type BaseHandler[E any, C any, U any] struct {
-	Service BaseService[E]
+	Service BaseUsecase[E]
 }
 
-func NewBaseHandler[E any, C any, U any](service BaseService[E]) *BaseHandler[E, C, U] {
+func NewBaseHandler[E any, C any, U any](service BaseUsecase[E]) *BaseHandler[E, C, U] {
 	return &BaseHandler[E, C, U]{
 		Service: service,
 	}
