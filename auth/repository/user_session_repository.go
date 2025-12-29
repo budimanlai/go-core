@@ -11,7 +11,7 @@ type userSessionRepositoryImpl struct {
 	base.BaseRepository[entity.UserSession, model.UserSession]
 }
 
-func NewUserSessionRepository(f *base.Factory) repository.UserSessionRepository {
+func NewUserSessionRepositoryImpl(f *base.Factory) repository.UserSessionRepository {
 	return &userSessionRepositoryImpl{
 		BaseRepository: base.NewRepository[entity.UserSession, model.UserSession](f),
 	}

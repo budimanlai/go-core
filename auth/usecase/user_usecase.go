@@ -57,5 +57,8 @@ func (u *UserUsecaseImpl) ResetPassword(ctx context.Context, request dto.ResetPa
 		return err
 	}
 
+	// 4. Revoke OTP
+	u.OtpUC.Revoke(ctx, request.Identifier, request.TrxID)
+
 	return nil
 }

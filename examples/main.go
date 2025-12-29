@@ -7,14 +7,12 @@ import (
 	pkg_databases "github.com/budimanlai/go-pkg/databases"
 	"github.com/gofiber/fiber/v2"
 
-	handler "github.com/budimanlai/go-core/auth/handler/http"
+	auth_nmanager "github.com/budimanlai/go-core/auth"
 	auth_service "github.com/budimanlai/go-core/auth/service"
+	impl_common_repository "github.com/budimanlai/go-core/common/repository"
+	impl_common_usecase "github.com/budimanlai/go-core/common/usecase"
 	"github.com/budimanlai/go-core/service"
 
-	common_repository "github.com/budimanlai/go-core/common/repository"
-	common_usecase "github.com/budimanlai/go-core/common/usecase"
-
-	"github.com/budimanlai/go-core/auth/repository"
 	"github.com/budimanlai/go-core/auth/usecase"
 	"github.com/budimanlai/go-core/base"
 	"github.com/budimanlai/go-core/middleware/auth"
@@ -56,16 +54,8 @@ func main() {
 	}
 	repoFactory := base.NewFactory(db, repoConfig)
 
-	// create repository
-	userRepo := repository.NewUserRepository(repoFactory)
-	userSessionRepo := repository.NewUserSessionRepository(repoFactory)
-	otpRepo := repository.NewOtpRepository(repoFactory)
-	messagingTemplateRepo := common_repository.NewMessagingTemplateRepositoryImpl(repoFactory)
-
-	// create usecase
-	userSessionUsecase := usecase.NewUserSessionUsecaseImpl(db, userSessionRepo, userRepo, jwtService)
-	userSessionUsecase.SetMultipleLoginAllowed(false) // allow multiple login
-	messagingTemplateUsecase := common_usecase.NewMessagingTemplateUsecaseImpl(db, messagingTemplateRepo)
+	messagingTemplateRepo := impl_common_repository.NewMessagingTemplateRepositoryImpl(repoFactory)
+	messagingTemplateUsecase := impl_common_usecase.NewMessagingTemplateUsecaseImpl(db, messagingTemplateRepo)
 
 	// mail service
 	mailConfig := service.SMTPMailServiceConfig{
@@ -83,8 +73,6 @@ func main() {
 		emailService,
 		waviroService,
 	)
-
-	// create OTP usecase
 	otpConfig := usecase.OtpConfig{
 		UserInitiated:      false,
 		BotPhoneNumber:     "1234567890",
@@ -92,16 +80,6 @@ func main() {
 		MaxPendingRequests: 3,
 		ExpiredDuration:    60 * time.Minute, // OTP expires in 60 minutes
 	}
-	otpUsecase := usecase.NewOtpUsecaseImpl(db, otpRepo, otpConfig)
-	otpUsecase.SetSender(otpSenderService)
-
-	userUsecase := usecase.NewUserUsecaseImpl(db, userRepo, otpUsecase)
-
-	// create handler
-	authHandler := handler.NewAuthHandler(userUsecase, userSessionUsecase, otpUsecase)
-
-	app := fiber.New()
-	api := app.Group("/api/v1")
 
 	basicApiAuthService := auth.NewBasicAuthService(auth.BasicAuthConfig{
 		Users: map[string]string{
@@ -110,19 +88,16 @@ func main() {
 		},
 	})
 
-	// Basic Auth Middleware
-	authEndpoint := api.Group("/auth")
-	authEndpoint.Post("/login", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.Login)
-	authEndpoint.Post("/otp/request", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.RequestOtp)
-	authEndpoint.Post("/otp/status", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.StatusOTP)
-	authEndpoint.Post("/otp/verify", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.VerifyOTP)
-	authEndpoint.Post("/password/reset", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.ResetPassword)
+	authManager := auth_nmanager.NewAuthManagerDefaultImpl(repoFactory)
+	authManager.SetJwtService(jwtService)
+	authManager.SetOtpSenderService(otpSenderService, otpConfig)
+	authManager.SetPublicMiddleware(auth.FiberBasicAuthMiddleware(basicApiAuthService))
+	authManager.SetPrivateMiddleware(auth.FiberJWTMiddleware(jwtService))
+	authManager.InitManager()
 
-	// JWT Auth Middleware
-	jwtRestAPI := api.Group("/auth", auth.FiberJWTMiddleware(jwtService))
-	jwtRestAPI.Post("/logout", authHandler.Logout)
-	jwtRestAPI.Post("/token/verify", authHandler.VerifyToken)
-	jwtRestAPI.Post("/token/refresh", authHandler.RefreshToken)
+	app := fiber.New()
+	api := app.Group("/api/v1")
+	authManager.SetRoute(api)
 
 	// setup routes
 	if err := app.Listen(":8084"); err != nil {

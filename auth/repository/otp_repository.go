@@ -11,7 +11,7 @@ type OtpRepositoryImpl struct {
 	base.BaseRepository[entity.Otp, model.Otp]
 }
 
-func NewOtpRepository(f *base.Factory) repository.OtpRepository {
+func NewOtpRepositoryImpl(f *base.Factory) repository.OtpRepository {
 	return &OtpRepositoryImpl{
 		BaseRepository: base.NewRepository[entity.Otp, model.Otp](f),
 	}

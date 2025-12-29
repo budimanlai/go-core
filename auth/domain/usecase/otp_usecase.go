@@ -23,4 +23,7 @@ type OtpUsecase interface {
 
 	// SetSender sets the OTP sender service.
 	SetSender(sender service.OtpSenderService)
+
+	// Revoke revokes the OTP for the given phone number and transaction ID.
+	Revoke(ctx context.Context, identifier string, trx_id string)
 }

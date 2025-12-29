@@ -185,9 +185,9 @@ func (uc *OtpUsecaseImpl) GenerateOTP(ctx context.Context, request dto.OtpReques
 // Returns:
 //   - bool: True if the pin code is valid, false otherwise
 //   - error: An error object if the operation fails, otherwise nil
-func (uc *OtpUsecaseImpl) Status(ctx context.Context, phoneNumber string, trx_id string) (bool, error) {
+func (uc *OtpUsecaseImpl) Status(ctx context.Context, identifier string, trx_id string) (bool, error) {
 	otp, err := uc.FindOne(ctx, func(d *gorm.DB) *gorm.DB {
-		return d.Where("handphone = ? and trx_id = ?", phoneNumber, trx_id)
+		return d.Where("handphone = ? and trx_id = ?", identifier, trx_id)
 	})
 	if err != nil {
 		return false, err
@@ -217,11 +217,11 @@ func (uc *OtpUsecaseImpl) Status(ctx context.Context, phoneNumber string, trx_id
 //
 // Returns:
 //   - error: An error object if the operation fails, otherwise nil
-func (uc *OtpUsecaseImpl) VerifyOtp(ctx context.Context, phoneNumber, trx_id, pin_code string) error {
+func (uc *OtpUsecaseImpl) VerifyOtp(ctx context.Context, identifier, trx_id, pin_code string) error {
 	// 1. find OTP by phone number, trx_id, pin_code, status = pending and not expired
 	otp, err := uc.FindOne(ctx, func(d *gorm.DB) *gorm.DB {
 		return d.Where("handphone = ? and trx_id = ? and pin_code = ? and created_at >= ?",
-			phoneNumber, trx_id, pin_code, time.Now().Add(-uc.config.ExpiredDuration))
+			identifier, trx_id, pin_code, time.Now().Add(-uc.config.ExpiredDuration))
 	})
 	if err != nil {
 		return err
@@ -244,4 +244,22 @@ func (uc *OtpUsecaseImpl) VerifyOtp(ctx context.Context, phoneNumber, trx_id, pi
 	}
 
 	return nil
+}
+
+// Revoke revokes the OTP for the given phone number and transaction ID by deleting it from the repository.
+//
+// Parameters:
+//   - ctx: Context for managing request-scoped values and deadlines
+//   - phoneNumber: The phone number associated with the OTP
+//   - trx_id: The transaction ID associated with the OTP
+func (uc *OtpUsecaseImpl) Revoke(ctx context.Context, identifier string, trx_id string) {
+	// 1. find OTP by phone number, trx_id, pin_code, status = pending and not expired
+	otp, _ := uc.FindOne(ctx, func(d *gorm.DB) *gorm.DB {
+		return d.Where("handphone = ? and trx_id = ?",
+			identifier, trx_id)
+	})
+
+	if otp != nil {
+		uc.Delete(ctx, otp.ID)
+	}
 }

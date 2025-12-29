@@ -12,7 +12,7 @@ type userRepositoryImpl struct {
 	base.BaseRepository[entity.User, model.User]
 }
 
-func NewUserRepository(f *base.Factory) repository.UserRepository {
+func NewUserRepositoryImpl(f *base.Factory) repository.UserRepository {
 	return &userRepositoryImpl{
 		BaseRepository: base.NewRepository[entity.User, model.User](f),
 	}
