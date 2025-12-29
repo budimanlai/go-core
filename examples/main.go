@@ -95,8 +95,10 @@ func main() {
 	otpUsecase := usecase.NewOtpUsecaseImpl(db, otpRepo, otpConfig)
 	otpUsecase.SetSender(otpSenderService)
 
+	userUsecase := usecase.NewUserUsecaseImpl(db, userRepo, otpUsecase)
+
 	// create handler
-	authHandler := handler.NewAuthHandler(userSessionUsecase, otpUsecase)
+	authHandler := handler.NewAuthHandler(userUsecase, userSessionUsecase, otpUsecase)
 
 	app := fiber.New()
 	api := app.Group("/api/v1")
@@ -114,6 +116,7 @@ func main() {
 	authEndpoint.Post("/otp/request", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.RequestOtp)
 	authEndpoint.Post("/otp/status", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.StatusOTP)
 	authEndpoint.Post("/otp/verify", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.VerifyOTP)
+	authEndpoint.Post("/password/reset", auth.FiberBasicAuthMiddleware(basicApiAuthService), authHandler.ResetPassword)
 
 	// JWT Auth Middleware
 	jwtRestAPI := api.Group("/auth", auth.FiberJWTMiddleware(jwtService))
