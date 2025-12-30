@@ -9,6 +9,8 @@ type User struct {
 }
 
 type RegisterRequest struct {
+	Channel         string `json:"channel" validate:"required,oneof=phone email"`
+	TrxID           string `json:"trx_id" validate:"required"`
 	Email           string `json:"email" validate:"required,email"`
 	Fullname        string `json:"fullname" validate:"required"`
 	Handphone       string `json:"handphone" validate:"required"`
