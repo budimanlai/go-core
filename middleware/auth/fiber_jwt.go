@@ -41,21 +41,3 @@ func FiberJWTMiddleware(jwtService JWTService) fiber.Handler {
 		return c.Next()
 	}
 }
-
-func FiberBasicAuthMiddleware(basicAuthService BasicAuthService) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-
-		username, err := basicAuthService.Validate(authHeader)
-		if err != nil {
-			c.Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid credentials",
-			})
-		}
-
-		c.Locals("username", username)
-
-		return c.Next()
-	}
-}

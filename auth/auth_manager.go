@@ -2,7 +2,6 @@ package auth
 
 import (
 	"github.com/budimanlai/go-core/base"
-	"github.com/budimanlai/go-core/middleware/auth"
 	"github.com/gofiber/fiber/v2"
 
 	dom_auth_repository "github.com/budimanlai/go-core/auth/domain/repository"
@@ -13,6 +12,8 @@ import (
 
 	impl_auth_repository "github.com/budimanlai/go-core/auth/repository"
 	impl_auth_usecase "github.com/budimanlai/go-core/auth/usecase"
+
+	pkg_auth "github.com/budimanlai/go-pkg/middleware/auth"
 )
 
 type AuthManagerDefaultImpl struct {
@@ -32,7 +33,8 @@ type AuthManagerDefaultImpl struct {
 	AuthHandler *dom_auth_handler.AuthHandler
 
 	// service
-	JwtService       auth.JWTService
+	JwtService       *pkg_auth.JWTAuth
+	JwtConfig        pkg_auth.JWTConfig
 	OtpSenderService auth_service.OtpSenderService
 	OtpConfig        impl_auth_usecase.OtpConfig
 
@@ -50,8 +52,14 @@ func NewAuthManagerDefaultImpl(factory *base.Factory) *AuthManagerDefaultImpl {
 	}
 }
 
-func (m *AuthManagerDefaultImpl) SetJwtService(jwtService auth.JWTService) {
+// SetJwtService sets the JWT service for custom authentication
+func (m *AuthManagerDefaultImpl) SetJwtService(jwtService *pkg_auth.JWTAuth) {
 	m.JwtService = jwtService
+}
+
+// SetJwtConfig sets the JWT configuration
+func (m *AuthManagerDefaultImpl) SetJwtConfig(jwtConfig pkg_auth.JWTConfig) {
+	m.JwtConfig = jwtConfig
 }
 
 func (m *AuthManagerDefaultImpl) SetOtpSenderService(otpSenderService auth_service.OtpSenderService, config impl_auth_usecase.OtpConfig) {
@@ -68,12 +76,23 @@ func (m *AuthManagerDefaultImpl) SetPrivateMiddleware(middleware fiber.Handler) 
 }
 
 func (m *AuthManagerDefaultImpl) InitManager() {
-	if m.JwtService == nil {
-		panic("JWT Service is not set in AuthManager")
-	}
-
+	m.initService()
 	m.initContainer()
 	m.initUsecase()
+	m.initMiddleware()
+}
+
+func (m *AuthManagerDefaultImpl) initMiddleware() {
+	if m.PrivateMiddleware == nil {
+		m.JwtService.SetSuccessHandler(m.UserSessionUsecase.SuccessHandler)
+		m.PrivateMiddleware = m.JwtService.Middleware()
+	}
+}
+
+func (m *AuthManagerDefaultImpl) initService() {
+	if m.JwtService == nil {
+		m.JwtService = pkg_auth.NewJWTAuth(m.JwtConfig)
+	}
 }
 
 func (m *AuthManagerDefaultImpl) initContainer() {

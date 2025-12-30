@@ -5,6 +5,8 @@ import (
 	"time"
 
 	pkg_databases "github.com/budimanlai/go-pkg/databases"
+	pkg_middleware "github.com/budimanlai/go-pkg/middleware/auth"
+
 	"github.com/gofiber/fiber/v2"
 
 	auth_nmanager "github.com/budimanlai/go-core/auth"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/budimanlai/go-core/auth/usecase"
 	"github.com/budimanlai/go-core/base"
-	"github.com/budimanlai/go-core/middleware/auth"
 )
 
 func main() {
@@ -38,13 +39,6 @@ func main() {
 	defer dbManager.Close()
 
 	db := dbManager.GetDb()
-
-	jwtConfig := auth.JWTConfig{
-		SecretKey:       "your-secret-key",
-		Issuer:          "your-app-name",
-		ExpirationHours: 72,
-	}
-	jwtService := auth.NewJWTService(jwtConfig)
 
 	// create repo factory
 	repoConfig := base.RepoConfig{
@@ -81,23 +75,33 @@ func main() {
 		ExpiredDuration:    60 * time.Minute, // OTP expires in 60 minutes
 	}
 
-	basicApiAuthService := auth.NewBasicAuthService(auth.BasicAuthConfig{
-		Users: map[string]string{
-			"admin": "admin123",
-			"user":  "user123",
-		},
-	})
+	jwtConfig := pkg_middleware.JWTConfig{
+		SecretKey:      "your-secret-key",
+		Issuer:         "your-app-name",
+		ExpirationTime: 72 * time.Hour,
+		SigningMethod:  "HS256",
+		TokenLookup:    "header:Authorization",
+	}
+
+	basicAuthConfig := pkg_middleware.BasicAuthConfig{
+		KeyProvider:  pkg_middleware.NewDbKeyProvider(db),
+		Unauthorized: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusUnauthorized) },
+	}
+	basicAuthMiddleware := pkg_middleware.NewBasicAuth(basicAuthConfig)
 
 	authManager := auth_nmanager.NewAuthManagerDefaultImpl(repoFactory)
-	authManager.SetJwtService(jwtService)
+	authManager.SetJwtConfig(jwtConfig)
 	authManager.SetOtpSenderService(otpSenderService, otpConfig)
-	authManager.SetPublicMiddleware(auth.FiberBasicAuthMiddleware(basicApiAuthService))
-	authManager.SetPrivateMiddleware(auth.FiberJWTMiddleware(jwtService))
+	authManager.SetPublicMiddleware(basicAuthMiddleware.Middleware())
 	authManager.InitManager()
 
 	app := fiber.New()
 	api := app.Group("/api/v1")
 	authManager.SetRoute(api)
+
+	api.Get("ping", authManager.PublicMiddleware, func(c *fiber.Ctx) error {
+		return c.SendString("pong")
+	})
 
 	// setup routes
 	if err := app.Listen(":8084"); err != nil {

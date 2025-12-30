@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/budimanlai/go-core/auth/domain/entity"
@@ -11,11 +12,13 @@ import (
 	"github.com/budimanlai/go-core/auth/dto"
 	"github.com/budimanlai/go-core/auth/models"
 	"github.com/budimanlai/go-core/base"
-	"github.com/budimanlai/go-core/middleware/auth"
+	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 
 	"gorm.io/gorm"
 
 	pkg_helpers "github.com/budimanlai/go-pkg/helpers"
+	pkg_auth "github.com/budimanlai/go-pkg/middleware/auth"
 	pkg_security "github.com/budimanlai/go-pkg/security"
 )
 
@@ -27,11 +30,11 @@ type UserSessionUsecaseImpl struct {
 	// MultipleLoginAllowed indicates whether multiple logins are allowed for a user
 	MultipleLoginAllowed bool
 
-	JWTService auth.JWTService
+	JWTService *pkg_auth.JWTAuth
 }
 
 func NewUserSessionUsecaseImpl(db *gorm.DB, repo repository.UserSessionRepository,
-	userRepo repository.UserRepository, jwtService auth.JWTService) usecase.UserSessionUsecase {
+	userRepo repository.UserRepository, jwtService *pkg_auth.JWTAuth) usecase.UserSessionUsecase {
 	return &UserSessionUsecaseImpl{
 		BaseUsecase:          base.NewBaseUsecase(repo, db),
 		UserRepository:       userRepo,
@@ -176,7 +179,9 @@ func (u *UserSessionUsecaseImpl) VerifyToken(ctx context.Context, tokenString st
 	}
 
 	// tokenString is valid, now get user info base on userID
-	user, err := u.UserRepository.FindByID(ctx, result.UserID)
+	user, err := u.UserRepository.FindByID(ctx, result.UserID, func(d *gorm.DB) *gorm.DB {
+		return d.Where("status = ?", "active")
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -201,4 +206,38 @@ func (u *UserSessionUsecaseImpl) VerifyToken(ctx context.Context, tokenString st
 	}
 
 	return &out, nil
+}
+
+// SuccessHandler is called when JWT authentication is successful
+func (u *UserSessionUsecaseImpl) SuccessHandler(c *fiber.Ctx, claims jwt.MapClaims) error {
+	session := claims["ses"]
+
+	// 1. get user_id by session token
+	userSession, err := u.GetUserIDByToken(c.Context(), session.(string))
+	if err != nil {
+		return fiber.ErrUnauthorized
+	}
+	c.Locals("user_id", fmt.Sprintf("%v", userSession.UserID))
+	return nil
+}
+
+// GetUserIDByToken retrieves the user session associated with the given token string
+func (u *UserSessionUsecaseImpl) GetUserIDByToken(ctx context.Context, tokenString string) (*entity.UserSession, error) {
+	// check if token isExists in user sessions
+	result, err := u.FindOne(ctx, func(d *gorm.DB) *gorm.DB {
+		// join with users table to ensure user is active
+		return d.Joins("JOIN users ON users.id = user_sessions.user_id AND users.status = ?", "active").
+			Select("user_sessions.user_id").
+			Where("tokens = ? AND remove_on IS NULL", tokenString)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// check if token is exists
+	if errors.Is(err, gorm.ErrRecordNotFound) || result == nil {
+		return nil, errors.New("invalid token")
+	}
+
+	return result, nil
 }
