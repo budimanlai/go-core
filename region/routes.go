@@ -5,8 +5,8 @@ import (
 )
 
 // SetReadOnlyRoutes sets the read-only routes for the region API.
-func SetReadOnlyRoutes(app fiber.Router, container *RegionContainer) {
-	regionGroup := app.Group("/region")
+func SetReadOnlyRoutes(app fiber.Router, container *RegionContainer, middleware ...fiber.Handler) {
+	regionGroup := app.Group("/region", middleware...)
 	regionGroup.Get("/subdistricts", container.SubdistrictHandler.Index)
 	regionGroup.Get("/provinces", container.ProvinceHandler.Index)
 	regionGroup.Get("/countryinfos", container.CountryinfoHandler.Index)
@@ -15,8 +15,8 @@ func SetReadOnlyRoutes(app fiber.Router, container *RegionContainer) {
 }
 
 // SetCRUDRoutes sets the CRUD routes for the region API.
-func SetCRUDRoutes(app fiber.Router, container *RegionContainer) {
-	regionGroup := app.Group("/region")
+func SetCRUDRoutes(app fiber.Router, container *RegionContainer, middleware ...fiber.Handler) {
+	regionGroup := app.Group("/region", middleware...)
 
 	// subdistrict CRUD
 	subdistrictGroup := regionGroup.Group("/subdistricts")

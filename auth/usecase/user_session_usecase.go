@@ -123,14 +123,8 @@ func (u *UserSessionUsecaseImpl) Login(ctx context.Context, username, password, 
 		return nil, errors.New("invalid password")
 	}
 
-	// 5. Generate user session token
-	sessionEntity, err := u.GenerateSession(ctx, user.ID, fromIP, userAgent)
-	if err != nil {
-		return nil, err
-	}
-
-	// 6. generate jwt token
-	accessToken, err := u.JWTService.GenerateToken(sessionEntity.Tokens)
+	// 5. generate user session and token
+	accessToken, err := u.GenerateToken(ctx, user.ID, fromIP, userAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +141,23 @@ func (u *UserSessionUsecaseImpl) Login(ctx context.Context, username, password, 
 	}
 
 	return &out, nil
+}
+
+// GenerateToken creates a new user session and generates a JWT token for the given user ID
+func (u *UserSessionUsecaseImpl) GenerateToken(ctx context.Context, user_id uint, fromIP, userAgent string) (string, error) {
+	// 1. Generate user session and save to user_sessions table
+	sessionEntity, err := u.GenerateSession(ctx, user_id, fromIP, userAgent)
+	if err != nil {
+		return "", err
+	}
+
+	// 2. Generate JWT token with session token as claim
+	accessToken, err := u.JWTService.GenerateToken(sessionEntity.Tokens)
+	if err != nil {
+		return "", err
+	}
+
+	return accessToken, nil
 }
 
 // Logout revokes the user session associated with the given token string

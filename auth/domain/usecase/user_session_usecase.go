@@ -39,4 +39,7 @@ type UserSessionUsecase interface {
 
 	// SuccessHandler handles successful JWT authentication
 	SuccessHandler(c *fiber.Ctx, claims jwt.MapClaims) error
+
+	// GenerateToken creates a new user session and generates a JWT token for the given user ID
+	GenerateToken(ctx context.Context, user_id uint, fromIP, userAgent string) (string, error)
 }

@@ -110,3 +110,26 @@ func (h *AuthHandler) ResetPassword(ctx *fiber.Ctx) error {
 
 	return response.SuccessI18n(ctx, "auth.success", out)
 }
+
+func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
+	var req dto.RegisterRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return response.ErrorI18n(ctx, fiber.StatusBadRequest, "app.error.invalid_request_body", nil)
+	}
+
+	// validate request
+	if err := validator.ValidateStructWithContext(ctx, &req); err != nil {
+		return response.ValidationErrorI18n(ctx, err)
+	}
+
+	req.FromIP = ctx.IP()
+	req.UserAgent = ctx.Get("User-Agent")
+
+	// register user
+	out, err := h.UserUC.Register(ctx.Context(), req)
+	if err != nil {
+		return response.BadRequestI18n(ctx, err.Error(), nil)
+	}
+
+	return response.SuccessI18n(ctx, "auth.success", out)
+}

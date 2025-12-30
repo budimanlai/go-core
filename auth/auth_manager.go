@@ -108,7 +108,7 @@ func (m *AuthManagerDefaultImpl) initUsecase() {
 	m.OtpUsecase = usecase.NewOtpUsecaseImpl(m.factory.DB, m.OtpRepo, m.OtpConfig)
 	m.OtpUsecase.SetSender(m.OtpSenderService)
 
-	m.UserUsecase = impl_auth_usecase.NewUserUsecaseImpl(m.factory.DB, m.UserRepo, m.OtpUsecase)
+	m.UserUsecase = impl_auth_usecase.NewUserUsecaseImpl(m.factory.DB, m.UserRepo, m.OtpUsecase, m.UserSessionUsecase)
 }
 
 func (m *AuthManagerDefaultImpl) SetRoute(app fiber.Router) {
@@ -121,6 +121,7 @@ func (m *AuthManagerDefaultImpl) SetRoute(app fiber.Router) {
 	authEndpoint.Post("/otp/status", m.PublicMiddleware, m.AuthHandler.StatusOTP)
 	authEndpoint.Post("/otp/verify", m.PublicMiddleware, m.AuthHandler.VerifyOTP)
 	authEndpoint.Post("/password/reset", m.PublicMiddleware, m.AuthHandler.ResetPassword)
+	authEndpoint.Post("/register", m.PublicMiddleware, m.AuthHandler.Register)
 
 	// JWT Auth Middleware
 	jwtRestAPI := app.Group("/auth", m.PrivateMiddleware)

@@ -13,4 +13,7 @@ type UserUsecase interface {
 
 	// ResetPassword resets the user's password using OTP verification
 	ResetPassword(ctx context.Context, request dto.ResetPasswordRequest) error
+
+	// Register registers a new user and returns login response
+	Register(ctx context.Context, req dto.RegisterRequest) (*dto.LoginResponse, error)
 }
