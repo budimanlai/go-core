@@ -111,6 +111,16 @@ func (h *AuthHandler) ResetPassword(ctx *fiber.Ctx) error {
 	return response.SuccessI18n(ctx, "auth.success", out)
 }
 
+// Register godoc
+// @Summary      User Registration
+// @Description  Register a new user with OTP verification
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        registerRequest  body      dto.RegisterRequest  true  "Register Request"
+// @Success      200              {object}  dto.LoginResponse
+// @Failure      400              {object}  response.ErrorResponse
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := ctx.BodyParser(&req); err != nil {
